@@ -3,6 +3,7 @@ import cors from 'cors';
 import express from 'express';
 import { Readable } from 'node:stream';
 import { requireFirebaseAuth } from './firebaseAdmin.js';
+import notebookUploadRouter from './routes/notebookUpload.js';
 
 const app = express();
 const port = Number(process.env.PORT || 5000);
@@ -30,6 +31,9 @@ app.get('/api/auth/session', requireFirebaseAuth, (req, res) => {
     displayName: req.firebaseUser.name || null,
   });
 });
+
+// Worksheet upload → AI slicer → Firebase persistence
+app.use('/api/notebooks/upload', notebookUploadRouter);
 
 // Stream requests through so JSON, multipart uploads, and binary payloads can
 // reach FastAPI without buffering the entire request in Express.
@@ -97,3 +101,4 @@ app.use('/api/ai', requireFirebaseAuth, async (req, res) => {
 app.listen(port, () => {
   console.log(`App backend listening on http://localhost:${port}`);
 });
+

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider.jsx';
 import { auth } from '../config/firebase.js';
 import { useNotebookStore } from '../store/useNotebookStore.js';
+import UploadWorksheetModal from '../components/UploadWorksheetModal.jsx';
 
 function formatDate(value) {
   if (value == null) return 'Just created';
@@ -35,6 +36,7 @@ export default function DashboardPage() {
   const uploadWorksheet = useNotebookStore((state) => state.uploadWorksheet);
   const clearError = useNotebookStore((state) => state.clearError);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [pageError, setPageError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
   const fileInputRef = useRef(null);
@@ -161,22 +163,18 @@ export default function DashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setUploadModalOpen(true);
+                  }}
                   className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-cyan-50"
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-100 text-lg text-cyan-700">↑</span>
                   <span>
                     <span className="block text-sm font-semibold text-slate-900">Upload worksheet</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">PDF or image, up to 25 MB</span>
+                    <span className="mt-0.5 block text-xs text-slate-500">PDF, DOCX, image, or video — up to 25 MB</span>
                   </span>
                 </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/pdf,image/*,.pdf"
-                  className="hidden"
-                  onChange={handleWorksheetSelected}
-                />
               </div>
             )}
           </div>
@@ -266,6 +264,16 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      <UploadWorksheetModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        onUploadComplete={(notebookId) => {
+          setUploadModalOpen(false);
+          navigate(`/notebook/${notebookId}`);
+        }}
+      />
     </main>
   );
 }
+

@@ -23,6 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Worksheet slicer — question detection + cropping pipeline
+from slicer import router as slicer_router  # noqa: E402
+
+app.include_router(slicer_router, prefix="/slice-worksheet")
+
 
 @app.get("/health")
 async def health():
@@ -55,3 +60,4 @@ async def tutor_socket(websocket: WebSocket):
             )
     except WebSocketDisconnect:
         pass
+
