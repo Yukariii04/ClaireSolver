@@ -44,3 +44,12 @@
 - `client/src/components/NotebookWorkspace.jsx` — Integrated selection state, mounted `MarkerActionPopover`, wired action execution to `harvestCanvasContext`, and emitted `claire:summon` custom event for Step 6 WebSocket tutor.
 - `memory.md` — Updated current state with Step 5.
 
+## 2026-10-29 — Step 6: System 2 Vision & Math Reasoning Engine (Gemini 2.5 Flash + SymPy)
+
+### Files created
+- `ai-engine/solver.py` — Math reasoning engine integrating Gemini 2.5 Flash (with Pro fallback) and deterministic SymPy tool verification (`solve`, `integrate`, `diff`, `simplify`, `factor`, `limit`, `matrix`, `evalf`) with strictly typed Pydantic `TutorSolutionResponse` output (`detected_problem_latex`, `student_mistake_note`, `steps` with `canvas_latex`, `margin_note`, phonetic `tts_speech`, and `graph_action`).
+
+### Files modified
+- `ai-engine/main.py` — Connected `solve_math_problem` to `/ws/tutor` WebSocket, implementing real-time step streaming (`status`, `problem_detected`, `step`, and `complete` events) plus direct HTTP `/solve` POST endpoint.
+- `memory.md` — Marked Step 6 as complete.
+

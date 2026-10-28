@@ -21,5 +21,6 @@ Three-service monorepo: **client** (React/Vite/Tailwind/Zustand), **server** (Ex
 - Step 3: Worksheet upload + smart question slicer — **complete**
 - Step 4: Multi-page notebook workspace — **complete**
 - Step 5: "Ask Marker" trigger & canvas context harvester — **complete**
-- Steps 6+: Tutor WebSocket, Intent Gatekeeper, Claire solver — not started
+- Step 6: System 2 vision & math reasoning engine (Gemini 2.5 Flash + SymPy) + streaming WebSocket — **complete**
+- Steps 7+: Ghost Pen line-by-line canvas animator, Mafs graphing, Gnani TTS audio stream — not started
 
