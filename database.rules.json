@@ -1,0 +1,66 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "notebooks": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$notebookId": {
+          ".validate": "newData.hasChildren(['metadata', 'pages'])",
+          "metadata": {
+            ".validate": "newData.hasChildren(['title', 'createdAt', 'updatedAt', 'paperStyle', 'preferredLanguage'])",
+            "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160" },
+            "createdAt": { ".validate": "newData.isNumber()" },
+            "updatedAt": { ".validate": "newData.isNumber()" },
+            "paperStyle": { ".validate": "newData.val() === 'grid' || newData.val() === 'ruled' || newData.val() === 'blank'" },
+            "preferredLanguage": { ".validate": "newData.val() === 'en-IN' || newData.val() === 'hi-IN' || newData.val() === 'gu-IN'" },
+            "$other": { ".validate": false }
+          },
+          "pages": {
+            "$pageId": {
+              ".validate": "newData.hasChildren(['pageNumberLabel', 'questionImageUrl', 'questionSummary', 'userStrokes'])",
+              "pageNumberLabel": { ".validate": "newData.isString()" },
+              "questionImageUrl": { ".validate": "newData.isString()" },
+              "questionSummary": { ".validate": "newData.isString()" },
+              "userStrokes": { ".validate": "newData.isString()" },
+              "aiSteps": {
+                "$stepIndex": {
+                  ".validate": "newData.hasChildren(['step_number', 'canvas_latex', 'tts_speech', 'margin_note'])",
+                  "step_number": { ".validate": "newData.isNumber()" },
+                  "canvas_latex": { ".validate": "newData.isString()" },
+                  "tts_speech": { ".validate": "newData.isString()" },
+                  "margin_note": { ".validate": "newData.isString()" },
+                  "graph_action": {},
+                  "$other": { ".validate": false }
+                }
+              },
+              "$other": { ".validate": false }
+            }
+          },
+          "pageOrder": {},
+          "sourceWorksheet": {},
+          "$other": { ".validate": false }
+        }
+      }
+    },
+    "notebookIndex": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "$notebookId": {
+          ".validate": "newData.hasChildren(['title', 'createdAt', 'updatedAt', 'paperStyle', 'preferredLanguage', 'pageCount'])",
+          "title": { ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 160" },
+          "createdAt": { ".validate": "newData.isNumber()" },
+          "updatedAt": { ".validate": "newData.isNumber()" },
+          "paperStyle": { ".validate": "newData.val() === 'grid' || newData.val() === 'ruled' || newData.val() === 'blank'" },
+          "preferredLanguage": { ".validate": "newData.val() === 'en-IN' || newData.val() === 'hi-IN' || newData.val() === 'gu-IN'" },
+          "pageCount": { ".validate": "newData.isNumber() && newData.val() >= 1" },
+          "worksheetFileName": { ".validate": "newData.isString()" },
+          "$other": { ".validate": false }
+        }
+      }
+    }
+  }
+}
+
