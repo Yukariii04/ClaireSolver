@@ -4,8 +4,10 @@ import { ref, serverTimestamp, update } from 'firebase/database';
 import { auth, database } from '../config/firebase.js';
 import { useNotebookStore } from '../store/useNotebookStore.js';
 import { PREFERRED_LANGUAGES } from '../lib/notebookSchema.js';
+import { harvestCanvasContext } from '../lib/harvestCanvasContext.js';
 import NotebookPage from './NotebookPage.jsx';
 import FloatingDock from './FloatingDock.jsx';
+import MarkerActionPopover from './MarkerActionPopover.jsx';
 
 // ---------------------------------------------------------------------------
 // Language labels
@@ -37,6 +39,10 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
   const [extending, setExtending] = useState(false);
   const [exporting, setExporting] = useState(false);
 
+  // ---- "✨ Ask Marker" Selection & Popover State -------------------------
+  const [selectionState, setSelectionState] = useState(null);
+  const [isHarvesting, setIsHarvesting] = useState(false);
+
   // ---- Canvas refs (one per page) ---------------------------------------
   const canvasRefs = useRef({});
   const pagesContainerRef = useRef(null);
@@ -63,7 +69,6 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
     setExtending(true);
     try {
       const newPageId = await insertContinuationPage(notebookId, activePageId);
-      // Scroll to the new page after React re-renders
       setTimeout(() => {
         document
           .querySelector(`[data-page-id="${newPageId}"]`)
@@ -74,6 +79,55 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
       console.error('Failed to extend page:', err);
     } finally {
       setExtending(false);
+    }
+  }
+
+  // ---- Marker Selection Triggered from NotebookPage ---------------------
+  function handleMarkerSelection(selection) {
+    setActivePageId(selection.pageId);
+    setSelectionState(selection);
+  }
+
+  function handleDismissSelection() {
+    setSelectionState(null);
+    setIsHarvesting(false);
+  }
+
+  // ---- Execute Marker Action & Harvest Canvas Context ------------------
+  async function handleExecuteAction({ action, query }) {
+    if (!selectionState) return;
+
+    setIsHarvesting(true);
+    try {
+      // Harvest the full page snapshot + high-res target crop
+      const harvestedContext = await harvestCanvasContext(
+        selectionState.pageId,
+        selectionState.boundingBox
+      );
+
+      // Dispatch global summon event for Step 6 WebSocket Tutor
+      window.dispatchEvent(
+        new CustomEvent('claire:summon', {
+          detail: {
+            action,
+            query,
+            pageId: selectionState.pageId,
+            notebookId,
+            boundingBox: selectionState.boundingBox,
+            fullPageBase64: harvestedContext.fullPageBase64,
+            croppedTargetBase64: harvestedContext.croppedTargetBase64,
+            preferredLanguage: notebook.metadata?.preferredLanguage || 'en-IN',
+          },
+        })
+      );
+
+      // Auto-switch tool back to pen for seamless writing workflow
+      setActiveTool('pen');
+      setSelectionState(null);
+    } catch (err) {
+      console.error('[Failed to harvest context for Claire]', err);
+    } finally {
+      setIsHarvesting(false);
     }
   }
 
@@ -232,6 +286,8 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
               notebookId={notebookId}
               isActive={activePageId === pageId}
               onFocus={setActivePageId}
+              activeSelection={selectionState}
+              onMarkerSelection={handleMarkerSelection}
             />
           );
         })}
@@ -241,7 +297,12 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
       <FloatingDock
         activeTool={activeTool}
         strokeWidth={strokeWidth}
-        onToolChange={setActiveTool}
+        onToolChange={(tool) => {
+          setActiveTool(tool);
+          if (tool !== 'marker') {
+            setSelectionState(null);
+          }
+        }}
         onStrokeWidthChange={setStrokeWidth}
         onUndo={handleUndo}
         onRedo={handleRedo}
@@ -249,7 +310,16 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
         canExtend={!!activePageId}
         extending={extending}
       />
+
+      {/* ═══════════════════ Marker Action Popover ══════════════════════ */}
+      {selectionState && (
+        <MarkerActionPopover
+          position={selectionState.screenPosition}
+          isHarvesting={isHarvesting}
+          onAction={handleExecuteAction}
+          onClose={handleDismissSelection}
+        />
+      )}
     </div>
   );
 }
-

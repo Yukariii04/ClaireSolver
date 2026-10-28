@@ -32,3 +32,15 @@
 - `client/src/pages/NotebookPage.jsx` — Updated to render `<NotebookWorkspace />` once loaded from RTDB.
 - `memory.md` — Marked Step 4 as complete.
 
+## 2026-10-29 — Step 5: "Ask Marker" Trigger & Canvas Context Harvester
+
+### Files created
+- `client/src/lib/boundingBox.js` — Bounding box math helper computing raw and 20% padded coordinates `(minX, minY, maxX, maxY)` from stroke points, with canvas clamping and header bounding box helper.
+- `client/src/lib/harvestCanvasContext.js` — Utility capturing high-res 2x DPI canvas contexts (`fullPagePng` of the entire page and `croppedTargetPng` of the selection or pinned header).
+- `client/src/components/MarkerActionPopover.jsx` — Compact floating glassmorphic popover with 4 quick action buttons (`Solve Step-by-Step`, `Check My Mistake`, `Give Hint`, `Plot Graph`), inline question input, and harvesting progress indicator.
+
+### Files modified
+- `client/src/components/NotebookPage.jsx` — Wired pointer stroke completion for marker tool to calculate bounding box, immediately undo temporary stroke from canvas, trigger shimmer selection highlight, and support question header click selection.
+- `client/src/components/NotebookWorkspace.jsx` — Integrated selection state, mounted `MarkerActionPopover`, wired action execution to `harvestCanvasContext`, and emitted `claire:summon` custom event for Step 6 WebSocket tutor.
+- `memory.md` — Updated current state with Step 5.
+
