@@ -19,4 +19,6 @@ Three-service monorepo: **client** (React/Vite/Tailwind/Zustand), **server** (Ex
 ## Current State
 - Steps 1–2: Auth, dashboard, notebook CRUD — complete
 - Step 3: Worksheet upload + smart question slicer — **complete**
-- Steps 4+: Notebook canvas, tutor WebSocket, AI solver — not started
+- Step 4: Multi-page notebook workspace — **complete**
+- Steps 5+: Tutor WebSocket, AI solver, voice — not started
+

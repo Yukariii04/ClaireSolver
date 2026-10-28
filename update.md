@@ -20,3 +20,15 @@
 - `server/index.js` — imported and mounted `notebookUploadRouter` at `/api/notebooks/upload`
 - `server/.env.example` — added `FIREBASE_DATABASE_URL`, `FIREBASE_STORAGE_BUCKET`
 - `client/src/pages/DashboardPage.jsx` — replaced bare file input with `UploadWorksheetModal`, added import + state
+
+## 2026-10-28 — Step 4: Multi-Page Notebook Workspace
+
+### Files created
+- `client/src/components/NotebookPage.jsx` — A4-proportioned page card with locked Pinned Question Header (displaying `questionImageUrl` above problem statement) and `react-sketch-canvas` canvas with CSS patterns for `grid`, `ruled`, or `blank` paper styles; 800ms debounced auto-save of strokes to Firebase RTDB.
+- `client/src/components/FloatingDock.jsx` — Glassmorphic bottom dock with Pen (with stroke width slider), Eraser, ✨ Ask Marker (highlighter), Undo/Redo, and "+ Extend Page" buttons.
+- `client/src/components/NotebookWorkspace.jsx` — Multi-page workspace container with sticky top bar (title, language selector for `en-IN`, `hi-IN`, `gu-IN`, mic indicator, PDF export via `html2canvas` and `jspdf`), vertically stacked page canvas list, and active page context tracking.
+
+### Files modified
+- `client/src/pages/NotebookPage.jsx` — Updated to render `<NotebookWorkspace />` once loaded from RTDB.
+- `memory.md` — Marked Step 4 as complete.
+
