@@ -2,6 +2,8 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 
 import { ReactSketchCanvas } from 'react-sketch-canvas';
 import { useNotebookStore } from '../store/useNotebookStore.js';
 import { computeHeaderBoundingBox, computeStrokeBoundingBox } from '../lib/boundingBox.js';
+import GhostPenStep from './GhostPenStep.jsx';
+import { useStepPlaybackQueue } from '../store/useStepPlaybackQueue.js';
 
 // ---------------------------------------------------------------------------
 // Paper background CSS patterns
@@ -185,6 +187,22 @@ const NotebookPage = forwardRef(function NotebookPage(
   const isSelected = activeSelection?.pageId === pageId;
   const selectionBox = isSelected ? activeSelection.boundingBox : null;
 
+  // ---- Step Playback Queue Subscription --------------------------------
+  const queueSteps = useStepPlaybackQueue((s) => s.stepsQueue);
+  const queuePageId = useStepPlaybackQueue((s) => s.activePageId);
+  const currentStepIndex = useStepPlaybackQueue((s) => s.currentStepIndex);
+  const stepStatusMap = useStepPlaybackQueue((s) => s.stepStatusMap);
+  const isWritingStep = useStepPlaybackQueue((s) => s.isWritingStep);
+  const activeMistakeNote = useStepPlaybackQueue((s) => s.mistakeNote);
+
+  const isCurrentPageQueue = queuePageId === pageId && queueSteps.length > 0;
+  const stepsToRender = isCurrentPageQueue
+    ? queueSteps
+    : Array.isArray(page.aiSteps)
+      ? page.aiSteps
+      : [];
+  const mistakeNote = isCurrentPageQueue ? activeMistakeNote : null;
+
   // ---- Render ----------------------------------------------------------
   return (
     <div
@@ -193,12 +211,12 @@ const NotebookPage = forwardRef(function NotebookPage(
       data-page-id={pageId}
       onClick={() => onFocus?.(pageId)}
       className={[
-        'relative mx-auto flex w-full max-w-[800px] flex-col overflow-hidden rounded-2xl border bg-white shadow-xl transition-shadow select-none',
+        'relative mx-auto flex w-full max-w-[800px] flex-col overflow-y-auto rounded-2xl border bg-white shadow-xl transition-shadow select-none',
         isActive
           ? 'border-indigo-300 shadow-indigo-100/60 ring-2 ring-indigo-200/50'
           : 'border-slate-200',
       ].join(' ')}
-      style={{ aspectRatio: '210 / 297' }}
+      style={{ minHeight: '1130px', aspectRatio: '210 / 297' }}
     >
       {/* ── Pinned Question Header ─────────────────────────────────── */}
       {page.questionImageUrl && (
@@ -240,11 +258,11 @@ const NotebookPage = forwardRef(function NotebookPage(
         </div>
       )}
 
-      {/* ── Drawing Canvas ─────────────────────────────────────────── */}
+      {/* ── Drawing Canvas & Ghost Pen Layer ───────────────────────── */}
       <div
         ref={canvasContainerRef}
         data-canvas-container
-        className="relative min-h-0 flex-1"
+        className="relative min-h-[750px] flex-1"
       >
         <div className="absolute inset-0" style={paperBg}>
           <ReactSketchCanvas
@@ -260,6 +278,44 @@ const NotebookPage = forwardRef(function NotebookPage(
             allowOnlyPointerType="all"
           />
         </div>
+
+        {/* ── Ghost Pen Step Layer ─────────────────────────────────── */}
+        {stepsToRender.length > 0 && (
+          <div className="pointer-events-none relative z-10 mx-auto w-full max-w-[92%] px-3 pt-3 pb-12">
+            {mistakeNote && (
+              <div className="pointer-events-auto mb-3 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50/95 p-3 text-xs text-amber-900 shadow-xs backdrop-blur-sm">
+                <span className="text-base leading-none">🔍</span>
+                <div>
+                  <span className="font-bold text-amber-950">Claire's Observation: </span>
+                  <span>{mistakeNote}</span>
+                </div>
+              </div>
+            )}
+            {stepsToRender.map((stepItem, idx) => {
+              const num = stepItem.step_number || idx + 1;
+              const stepStatus = isCurrentPageQueue
+                ? stepStatusMap[num] ||
+                  (idx < currentStepIndex
+                    ? 'completed'
+                    : idx === currentStepIndex
+                      ? 'writing'
+                      : 'pending')
+                : 'completed';
+              const isStepActive =
+                isCurrentPageQueue && idx === currentStepIndex && isWritingStep;
+
+              return (
+                <div key={`ghost-step-${num}-${idx}`} className="pointer-events-auto">
+                  <GhostPenStep
+                    step={stepItem}
+                    status={stepStatus}
+                    isActive={isStepActive}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* ── Shimmer Selection Box (Canvas region) ────────────────── */}
         {selectionBox && !selectionBox.isHeader && (

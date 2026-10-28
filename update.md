@@ -53,3 +53,43 @@
 - `ai-engine/main.py` — Connected `solve_math_problem` to `/ws/tutor` WebSocket, implementing real-time step streaming (`status`, `problem_detected`, `step`, and `complete` events) plus direct HTTP `/solve` POST endpoint.
 - `memory.md` — Marked Step 6 as complete.
 
+---
+
+## Step 7 : Ghost Pen line-by-line step renderer & inline interactive Mafs graph spawner
+
+### What was done
+1. **Zustand Step Playback Queue Controller (`useStepPlaybackQueue.js`)**:
+   - Manages sequential AI derivation playback state (`idle`, `playing`, `paused`, `completed`).
+   - Co-ordinates simultaneous Ghost Pen ink reveal and speech synthesis pacing, pausing for 400ms between derivation lines before auto-advancing.
+   - Automatically commits solved steps to Firebase RTDB via `useNotebookStore.getState().appendAiStep(...)`.
+   - Supports mid-solution student interruptions (`interruptAndAskWhy`) emitting `'claire:ask_why'` events.
+2. **Ghost Pen Step Component (`GhostPenStep.jsx`)**:
+   - Renders step LaTeX math in distinct deep indigo ink via KaTeX (`output: htmlAndMathml`).
+   - Smooth left-to-right CSS `clip-path` stroke reveal synced with step duration and speech pacing.
+   - Animated pen nib cursor (`✍️`) tracking the live reveal boundary.
+   - Margin note styled with handwritten font (`Caveat` cursive) tilted like authentic teacher pencil notes.
+   - Interactive floating `[⏸ Pause / Ask Why]` chip for instant mid-solution clarification.
+3. **Inline Interactive 2D Graph Widget (`InlineNotebookGraph.jsx`)**:
+   - Powered by `mafs` (`Mafs`, `Coordinates.Cartesian`, `Plot.OfX`, `Point`).
+   - Built-in math expression compiler translating string formulas (trig, powers, exp, logs, polynomials) to safe JavaScript functions.
+   - Highlights roots, critical extrema, and intercepts with labeled coordinate chips.
+   - Glassmorphic card design seamlessly integrated into the notebook page.
+4. **Workspace & Page Integration (`NotebookPage.jsx`, `NotebookWorkspace.jsx`, `index.css`)**:
+   - Mounted `GhostPenStep` layer inside `NotebookPage` with pointer-event pass-through for drawing ink.
+   - Added student mistake diagnostic banner when `student_mistake_note` is detected.
+   - Connected `NotebookWorkspace` to streaming `/ws/tutor` WebSocket with resilient HTTP `/solve` fallback.
+   - Built the `[⏸ Ask Why]` interruption modal with targeted question submission.
+   - Imported `Caveat`, `Kalam`, `katex.min.css`, and `mafs/core.css` in `index.css`.
+
+### Files created
+- `client/src/store/useStepPlaybackQueue.js`
+- `client/src/components/GhostPenStep.jsx`
+- `client/src/components/InlineNotebookGraph.jsx`
+
+### Files modified
+- `client/src/components/NotebookPage.jsx`
+- `client/src/components/NotebookWorkspace.jsx`
+- `client/src/index.css`
+- `memory.md`
+
+
