@@ -2,10 +2,11 @@ import { create } from 'zustand';
 import { useNotebookStore } from './useNotebookStore.js';
 
 // ---------------------------------------------------------------------------
-// Helpers: Browser Speech Synthesis Fallback & Timing
+// Helpers: Gnani Timbre Audio & Browser Speech Synthesis Fallback
 // ---------------------------------------------------------------------------
 
 let activeUtterance = null;
+let activeAudioElement = null;
 let advanceTimeoutId = null;
 
 function estimateReadingTimeMs(text) {
@@ -59,6 +60,48 @@ function speakText(text, language = 'en-IN', onStart, onEnd) {
     const fallbackTimeout = setTimeout(() => onEnd?.(), estimateReadingTimeMs(text));
     return () => clearTimeout(fallbackTimeout);
   }
+}
+
+function playStepAudio(step, language = 'en-IN', onStart, onEnd) {
+  if (step?.tts_audio_base64) {
+    try {
+      if (activeAudioElement) {
+        activeAudioElement.pause();
+        activeAudioElement = null;
+      }
+      const audio = new Audio(`data:audio/wav;base64,${step.tts_audio_base64}`);
+      activeAudioElement = audio;
+
+      audio.onplay = () => {
+        onStart?.();
+      };
+      audio.onended = () => {
+        activeAudioElement = null;
+        onEnd?.();
+      };
+      audio.onerror = () => {
+        activeAudioElement = null;
+        speakText(step.tts_speech || step.margin_note, language, onStart, onEnd);
+      };
+
+      audio.play().catch(() => {
+        activeAudioElement = null;
+        speakText(step.tts_speech || step.margin_note, language, onStart, onEnd);
+      });
+
+      return () => {
+        if (activeAudioElement === audio) {
+          audio.pause();
+          activeAudioElement = null;
+        }
+      };
+    } catch {
+      return speakText(step.tts_speech || step.margin_note, language, onStart, onEnd);
+    }
+  }
+
+  const textToSpeak = step.tts_speech || step.margin_note || 'Step';
+  return speakText(textToSpeak, language, onStart, onEnd);
 }
 
 // ---------------------------------------------------------------------------
@@ -137,9 +180,8 @@ export const useStepPlaybackQueue = create((set, get) => ({
 
     // Start speaking the first step
     const firstStep = steps[0];
-    const textToSpeak = firstStep.tts_speech || firstStep.margin_note || 'Step 1';
-    speakText(
-      textToSpeak,
+    playStepAudio(
+      firstStep,
       language,
       () => set({ isSpeakingStep: true }),
       () => get().completeStepTTS(firstStep.step_number || 1),
@@ -153,6 +195,9 @@ export const useStepPlaybackQueue = create((set, get) => ({
     if (advanceTimeoutId) {
       clearTimeout(advanceTimeoutId);
       advanceTimeoutId = null;
+    }
+    if (activeAudioElement) {
+      try { activeAudioElement.pause(); } catch {}
     }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.pause();
@@ -168,6 +213,9 @@ export const useStepPlaybackQueue = create((set, get) => ({
    * Resume playback from the paused state.
    */
   resumePlayback: () => {
+    if (activeAudioElement) {
+      try { activeAudioElement.play(); } catch {}
+    }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.resume();
     }
@@ -191,6 +239,12 @@ export const useStepPlaybackQueue = create((set, get) => ({
     if (advanceTimeoutId) {
       clearTimeout(advanceTimeoutId);
       advanceTimeoutId = null;
+    }
+    if (activeAudioElement) {
+      try {
+        activeAudioElement.pause();
+        activeAudioElement = null;
+      } catch {}
     }
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       window.speechSynthesis.cancel();
@@ -301,9 +355,8 @@ export const useStepPlaybackQueue = create((set, get) => ({
       });
 
       // Speak next step
-      const textToSpeak = nextStep.tts_speech || nextStep.margin_note || `Step ${nextNum}`;
-      speakText(
-        textToSpeak,
+      playStepAudio(
+        nextStep,
         language,
         () => set({ isSpeakingStep: true }),
         () => get().completeStepTTS(nextNum),

@@ -92,4 +92,45 @@
 - `client/src/index.css`
 - `memory.md`
 
+---
+
+## Step 8 : Hands-free voice & System 1 gatekeeper pipeline (Gnani Prisma STT + TypeSafe Jev + Gnani Timbre TTS)
+
+### What was done
+1. **Ears ONLY — Gnani Prisma v2.5 STT Streaming Client (`ai-engine/prisma_stt.py`)**:
+   - Streams 16kHz 16-bit mono linear PCM audio chunks (1024 bytes per frame) from React microphone WebSocket to Gnani Prisma.
+   - Multilingual support for Indian languages (`en-IN`, `hi-IN` Hinglish, `gu-IN`).
+   - Mathematical vocabulary boosting (`bias_list=["integral", "derivative", "theta", "cosine", "sine", "matrix", "quadratic", "factor", "limit", "minus"]`, `bias_score=1.5`).
+   - Seamless local fallback session for offline development without crashes.
+2. **System 1 Gatekeeper ONLY — TypeSafe Jev (`ai-engine/jev_gatekeeper.py`)**:
+   - Zero LLM semantic router for fast sub-50ms gating decisions via typed questions (`Noul`, `Choice`).
+   - Evaluates contextual state: `{"utterance": transcript, "is_student_writing": is_pen_moving, "is_tutor_currently_explaining": is_ai_speaking}`.
+   - Strictly enforced routing policy:
+     - `is_ai_speaking` and `is_interrupting_tutor.noul >= 0.70` → `PAUSE_TUTOR`.
+     - `is_calling_tutor.noul >= 0.75` → `TRIGGER_GEMINI` with `requested_mode` (`step_by_step`, `check_mistake`, `give_hint`, `plot_graph`).
+     - `noul < 0.75` → `IGNORE` (silent notebook preservation during muttering or scratch calculations).
+3. **Voice Output ONLY — Gnani Timbre v2.5 / v3.0 TTS (`ai-engine/timbre_tts.py`)**:
+   - Synthesizes high-fidelity pedagogical speech using Indian educator voice (`voice="Nalini"`, `model="timbre-v2.5"`).
+   - Generates 24kHz linear PCM mono in WAV format; returns base64 payload streamed directly alongside step JSON.
+   - Built-in in-memory fallback generator ensuring uninterrupted offline derivation pacing.
+4. **FastAPI Voice WebSocket & React Microphone Hook (`ai-engine/main.py`, `client/src/hooks/useVoiceTutor.js`, `client/src/components/NotebookWorkspace.jsx`)**:
+   - Mounted `/ws/voice` endpoint forwarding raw PCM stream to Prisma and streaming gatekeeper decisions.
+   - React hook captures mic audio via `AudioContext` and `ScriptProcessorNode` (Float32 to Int16 PCM conversion).
+   - Auto-triggers `harvestCanvasContext` on `TRIGGER_GEMINI` and immediately pauses ghost pen on `PAUSE_TUTOR`.
+   - Connected `useStepPlaybackQueue` to play synthesized Gnani Timbre WAV audio in lockstep with KaTeX reveal.
+   - Added interactive hands-free Voice indicator pill in workspace top bar with live Jev evaluation status.
+
+### Files created
+- `ai-engine/prisma_stt.py`
+- `ai-engine/jev_gatekeeper.py`
+- `ai-engine/timbre_tts.py`
+- `client/src/hooks/useVoiceTutor.js`
+
+### Files modified
+- `ai-engine/main.py`
+- `client/src/components/NotebookWorkspace.jsx`
+- `client/src/store/useStepPlaybackQueue.js`
+- `memory.md`
+
+
 

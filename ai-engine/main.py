@@ -10,6 +10,9 @@ from pydantic import BaseModel, Field
 
 from slicer import router as slicer_router
 from solver import TutorSolutionResponse, solve_math_problem
+from prisma_stt import PrismaSTTStreamSession
+from jev_gatekeeper import evaluate_utterance
+from timbre_tts import synthesize_speech_base64
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -149,14 +152,26 @@ async def tutor_socket(websocket: WebSocket):
                     "student_mistake_note": solution.student_mistake_note,
                 })
 
-                # 4. Stream each individual solution step
+                # 4. Stream each individual solution step with Timbre TTS audio
                 for step in solution.steps:
+                    step_dict = step.model_dump()
+                    try:
+                        tts_b64 = await synthesize_speech_base64(
+                            text=step.tts_speech,
+                            language=preferred_language,
+                            voice="Nalini",
+                        )
+                        step_dict["tts_audio_base64"] = tts_b64
+                    except Exception as tts_err:
+                        logger.warning("Timbre TTS synthesis failed for step %s: %s", step.step_number, tts_err)
+                        step_dict["tts_audio_base64"] = None
+
                     await websocket.send_json({
                         "type": "step",
                         "requestId": req_id,
                         "pageId": page_id,
                         "notebookId": notebook_id,
-                        "step": step.model_dump(),
+                        "step": step_dict,
                     })
                     # Brief breath between steps so Ghost Pen and client can render
                     await asyncio.sleep(0.04)
@@ -183,3 +198,130 @@ async def tutor_socket(websocket: WebSocket):
         logger.info("Tutor WebSocket disconnected normally.")
     except Exception as exc:
         logger.error("Unexpected WebSocket error: %s", exc)
+
+
+# ---------------------------------------------------------------------------
+# Hands-Free Voice & System 1 Gatekeeper WebSocket (/ws/voice)
+# ---------------------------------------------------------------------------
+
+
+@app.websocket("/ws/voice")
+async def voice_socket(websocket: WebSocket):
+    origin = websocket.headers.get("origin")
+    if origin and origin.rstrip("/") not in {item.rstrip("/") for item in allowed_origins}:
+        await websocket.close(code=1008, reason="Origin not allowed")
+        return
+
+    await websocket.accept()
+
+    # Track student and tutor states sent from React
+    voice_state = {
+        "language": "en-IN",
+        "is_student_writing": False,
+        "is_tutor_explaining": False,
+    }
+
+    # Queue for delivering transcripts from Gnani Prisma
+    transcript_queue: asyncio.Queue[tuple[str, bool]] = asyncio.Queue()
+
+    async def on_transcript(transcript: str, is_final: bool):
+        await transcript_queue.put((transcript, is_final))
+
+    stt_session = PrismaSTTStreamSession(
+        language=voice_state["language"],
+        on_transcript_callback=on_transcript,
+    )
+
+    await websocket.send_json({
+        "type": "ready",
+        "service": "ai-engine",
+        "component": "voice-gatekeeper",
+        "status": "connected",
+    })
+
+    # Background task forwarding STT transcripts & evaluating gatekeeper
+    async def process_transcripts():
+        try:
+            while True:
+                transcript, is_final = await transcript_queue.get()
+                if not transcript:
+                    continue
+
+                # Forward live interim/final transcript to browser
+                await websocket.send_json({
+                    "type": "transcript",
+                    "text": transcript,
+                    "is_final": is_final,
+                })
+
+                # If final segment, evaluate with TypeSafe Jev System 1 Gatekeeper
+                if is_final and len(transcript.strip()) > 0:
+                    decision = await evaluate_utterance(
+                        transcript=transcript,
+                        is_pen_moving=voice_state["is_student_writing"],
+                        is_ai_speaking=voice_state["is_tutor_explaining"],
+                    )
+
+                    logger.info(
+                        "Gatekeeper decision: action=%s, mode=%s, conf=%.2f, reason=%s",
+                        decision.action,
+                        decision.mode,
+                        decision.confidence,
+                        decision.reason,
+                    )
+
+                    await websocket.send_json({
+                        "type": "gatekeeper_decision",
+                        "decision": decision.action,
+                        "mode": decision.mode,
+                        "confidence": decision.confidence,
+                        "reason": decision.reason,
+                        "transcript": transcript,
+                    })
+        except asyncio.CancelledError:
+            pass
+        except Exception as exc:
+            logger.error("Error in voice transcript processor: %s", exc)
+
+    transcript_task = asyncio.create_task(process_transcripts())
+
+    try:
+        while True:
+            # Receive either binary PCM audio bytes or JSON metadata
+            raw_message = await websocket.receive()
+
+            if "bytes" in raw_message and raw_message["bytes"]:
+                # Stream 16kHz PCM audio chunk to Gnani Prisma STT
+                await stt_session.send_audio_chunk(raw_message["bytes"])
+
+            elif "text" in raw_message and raw_message["text"]:
+                import json
+                try:
+                    data = json.loads(raw_message["text"])
+                    msg_type = data.get("type")
+
+                    if msg_type == "config":
+                        new_lang = data.get("language")
+                        if new_lang and new_lang != voice_state["language"]:
+                            voice_state["language"] = new_lang
+                            await stt_session.close()
+                            stt_session = PrismaSTTStreamSession(
+                                language=new_lang,
+                                on_transcript_callback=on_transcript,
+                            )
+                    elif msg_type == "pen_state":
+                        voice_state["is_student_writing"] = bool(data.get("is_writing", False))
+                    elif msg_type == "tutor_state":
+                        voice_state["is_tutor_explaining"] = bool(data.get("is_speaking", False))
+                    elif msg_type == "ping":
+                        await websocket.send_json({"type": "pong"})
+                except Exception as parse_err:
+                    logger.debug("Failed to parse JSON voice frame: %s", parse_err)
+
+    except WebSocketDisconnect:
+        logger.info("Voice WebSocket disconnected.")
+    except Exception as exc:
+        logger.error("Unexpected Voice WebSocket error: %s", exc)
+    finally:
+        transcript_task.cancel()
+        await stt_session.close()

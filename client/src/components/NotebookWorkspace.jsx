@@ -6,6 +6,7 @@ import { useNotebookStore } from '../store/useNotebookStore.js';
 import { useStepPlaybackQueue } from '../store/useStepPlaybackQueue.js';
 import { PREFERRED_LANGUAGES } from '../lib/notebookSchema.js';
 import { harvestCanvasContext } from '../lib/harvestCanvasContext.js';
+import { useVoiceTutor } from '../hooks/useVoiceTutor.js';
 import NotebookPage from './NotebookPage.jsx';
 import FloatingDock from './FloatingDock.jsx';
 import MarkerActionPopover from './MarkerActionPopover.jsx';
@@ -46,6 +47,21 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
   const [tutorStatus, setTutorStatus] = useState(null);
   const [askWhyModal, setAskWhyModal] = useState(null);
   const [askWhyQuestion, setAskWhyQuestion] = useState('');
+
+  // ---- Hands-Free Voice & System 1 Gatekeeper Hook ---------------------
+  const {
+    isListening,
+    isMuted,
+    transcript: voiceTranscript,
+    gatekeeperState,
+    startListening,
+    stopListening,
+    toggleMute,
+  } = useVoiceTutor({
+    activePageId,
+    notebookId,
+    preferredLanguage: notebook.metadata?.preferredLanguage || 'en-IN',
+  });
 
   // ---- Canvas refs (one per page) ---------------------------------------
   const canvasRefs = useRef({});
@@ -383,10 +399,44 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
             </div>
 
             {/* Mic / voice status indicator */}
-            <span className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/80 px-2.5 py-1.5 text-[11px] font-medium text-slate-500">
-              <span className="h-2 w-2 rounded-full bg-slate-300" />
-              <span className="hidden sm:inline">Voice off</span>
-            </span>
+            <button
+              type="button"
+              onClick={isListening ? stopListening : startListening}
+              title={isListening ? 'Click to disable hands-free voice' : 'Click to enable hands-free voice'}
+              className={[
+                'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95',
+                isListening
+                  ? gatekeeperState === 'evaluating'
+                    ? 'border-amber-300 bg-amber-50 text-amber-800 shadow-2xs'
+                    : gatekeeperState === 'summoned'
+                      ? 'border-indigo-400 bg-indigo-50 text-indigo-700 shadow-2xs'
+                      : 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-2xs'
+                  : 'border-slate-200 bg-white/80 text-slate-500 hover:border-slate-300 hover:text-slate-700',
+              ].join(' ')}
+            >
+              <span
+                className={[
+                  'h-2 w-2 rounded-full',
+                  isListening
+                    ? gatekeeperState === 'evaluating'
+                      ? 'bg-amber-500 animate-ping'
+                      : 'bg-emerald-500 animate-pulse'
+                    : 'bg-slate-300',
+                ].join(' ')}
+              />
+              <span className="hidden sm:inline">
+                {isListening
+                  ? gatekeeperState === 'evaluating'
+                    ? 'Jev evaluating...'
+                    : gatekeeperState === 'summoned'
+                      ? 'Summoned!'
+                      : gatekeeperState === 'ignored'
+                        ? 'Thinking aloud'
+                        : 'Voice on'
+                  : 'Voice off'}
+              </span>
+              <span className="sm:hidden">{isListening ? '🎙️' : '🔇'}</span>
+            </button>
 
             {/* Export PDF */}
             <button

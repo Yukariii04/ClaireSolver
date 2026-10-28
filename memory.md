@@ -23,5 +23,5 @@ Three-service monorepo: **client** (React/Vite/Tailwind/Zustand), **server** (Ex
 - Step 5: "Ask Marker" trigger & canvas context harvester — **complete**
 - Step 6: System 2 vision & math reasoning engine (Gemini 2.5 Flash + SymPy) + streaming WebSocket — **complete**
 - Step 7: Ghost Pen line-by-line step renderer & inline interactive Mafs graph spawner — **complete**
-- Steps 8+: Gnani TTS audio stream integration & full bidirectional voice/multimodal loop
+- Step 8: Hands-free voice & System 1 gatekeeper pipeline (Gnani Prisma STT + TypeSafe Jev + Gnani Timbre TTS) — **complete**
 
