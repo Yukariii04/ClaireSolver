@@ -132,5 +132,33 @@
 - `client/src/store/useStepPlaybackQueue.js`
 - `memory.md`
 
+---
+
+## Step 9 : Homework-ready multi-page A4 PDF exporter (clean submission & revision guide modes)
+
+### What was done
+1. **Multi-Page A4 PDF Exporter (`client/src/utils/exportNotebookToPdf.js`)**:
+   - Iterates sequentially through all `<NotebookPage />` elements in the active workspace.
+   - Dynamically injects style overrides before canvas capture:
+     - "Clean Submission Mode": hides temporary margin callouts and tutor coaching chips, and unifies Ghost Pen math ink with the student's dark blue-black ink (`#1a1a2e`).
+     - "Revision / Study Guide Mode": preserves distinct AI tutor indigo ink, cursive margin hints, and mistake check callouts.
+     - "Clean White Paper" vs. "Keep Grid/Ruled Lines" paper background options.
+   - Captures each page at 2x resolution (`scale: 2`, `useCORS: true`) ensuring crisp rendering for Firebase question images, handwritten strokes, KaTeX math symbols, and Mafs graphs.
+   - Appends pages onto a standard A4 sheet (`210mm x 297mm`) in `jsPDF` and triggers client download (`{notebookTitle}_Submission.pdf` or `{notebookTitle}_StudyGuide.pdf`).
+2. **Export PDF Modal (`client/src/components/ExportPdfModal.jsx`)**:
+   - Glassmorphic modal providing preset and background customization controls.
+   - Displays detected page count and animated progress bar (`Rendering Page X of Y...`) during export.
+3. **Workspace Integration (`client/src/components/NotebookWorkspace.jsx`)**:
+   - Replaced old naive PDF export with `<ExportPdfModal />`.
+
+### Files created
+- `client/src/utils/exportNotebookToPdf.js`
+- `client/src/components/ExportPdfModal.jsx`
+
+### Files modified
+- `client/src/components/NotebookWorkspace.jsx`
+- `memory.md`
+
+
 
 

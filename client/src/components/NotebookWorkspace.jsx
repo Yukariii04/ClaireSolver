@@ -10,6 +10,7 @@ import { useVoiceTutor } from '../hooks/useVoiceTutor.js';
 import NotebookPage from './NotebookPage.jsx';
 import FloatingDock from './FloatingDock.jsx';
 import MarkerActionPopover from './MarkerActionPopover.jsx';
+import ExportPdfModal from './ExportPdfModal.jsx';
 
 // ---------------------------------------------------------------------------
 // Language labels
@@ -39,7 +40,7 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
     () => notebook.pageOrder[0] || null,
   );
   const [extending, setExtending] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // ---- "✨ Ask Marker" Selection & Popover State -------------------------
   const [selectionState, setSelectionState] = useState(null);
@@ -307,52 +308,6 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
     }
   }
 
-  // ---- PDF export -------------------------------------------------------
-  async function handleExportPDF() {
-    setExporting(true);
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-
-      const pageEls = pagesContainerRef.current?.querySelectorAll(
-        '[data-notebook-page]',
-      );
-      if (!pageEls?.length) return;
-
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-
-      for (let i = 0; i < pageEls.length; i++) {
-        if (i > 0) pdf.addPage();
-        const canvas = await html2canvas(pageEls[i], {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-        });
-        pdf.addImage(
-          canvas.toDataURL('image/png'),
-          'PNG',
-          0,
-          0,
-          pdfW,
-          pdfH,
-        );
-      }
-
-      const safeName =
-        (notebook.metadata?.title || 'notebook')
-          .replace(/[^a-zA-Z0-9 _-]/g, '')
-          .trim() || 'notebook';
-      pdf.save(`${safeName}.pdf`);
-    } catch (err) {
-      console.error('PDF export failed:', err);
-    } finally {
-      setExporting(false);
-    }
-  }
-
   // ---- Derived data -----------------------------------------------------
   const metadata = notebook.metadata || {};
   const paperStyle = metadata.paperStyle || 'grid';
@@ -441,18 +396,10 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
             {/* Export PDF */}
             <button
               type="button"
-              onClick={handleExportPDF}
-              disabled={exporting}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={() => setIsExportModalOpen(true)}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95"
             >
-              {exporting ? (
-                <>
-                  <span className="h-3 w-3 animate-spin rounded-full border border-slate-300 border-t-indigo-600" />
-                  Exporting…
-                </>
-              ) : (
-                'Export PDF'
-              )}
+              <span>📄 Export PDF</span>
             </button>
           </div>
         </div>
@@ -622,6 +569,15 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
           </div>
         </div>
       )}
+      {/* ═══════════════════ Export PDF Modal ══════════════════════════ */}
+      <ExportPdfModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        notebookTitle={notebook.metadata?.title || 'Homework Notebook'}
+        pageElements={Array.from(
+          pagesContainerRef.current?.querySelectorAll('[data-notebook-page]') || [],
+        )}
+      />
     </div>
   );
 }

@@ -280,10 +280,8 @@ export function useVoiceTutor({
       import.meta.env?.VITE_AI_URL ||
       'ws://localhost:8000';
 
-    let wsVoiceUrl = rawAiUrl.replace(/^http/, 'ws');
-    if (!wsVoiceUrl.endsWith('/ws/voice')) {
-      wsVoiceUrl = `${wsVoiceUrl.replace(/\/$/, '')}/ws/voice`;
-    }
+    let wsVoiceUrl = rawAiUrl.replace(/^http/, 'ws').replace(/\/ws\/(tutor|voice)\/?$/, '');
+    wsVoiceUrl = `${wsVoiceUrl.replace(/\/$/, '')}/ws/voice`;
 
     try {
       // 2. Request 16kHz Mono Microphone Access
