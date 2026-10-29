@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from slicer import router as slicer_router
 from solver import TutorSolutionResponse, solve_math_problem
 from prisma_stt import PrismaSTTStreamSession
-from jev_gatekeeper import evaluate_utterance
+from laya_gatekeeper import evaluate_utterance
 from timbre_tts import synthesize_speech_base64
 
 load_dotenv()

@@ -1,13 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Caveat:wght@500;700&family=Kalam:wght@400;700&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Kalam:wght@400;700&display=swap');
 @import "katex/dist/katex.min.css";
 @import "mafs/core.css";
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  color: #172033;
-  background: #f8fafc;
+  font-family: 'Space Mono', monospace, -apple-system, sans-serif;
+  color: #0f172a;
+  background: #008080;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -22,10 +21,153 @@ body {
   min-width: 320px;
   min-height: 100vh;
   margin: 0;
+  background-color: #008080;
 }
 
 button,
 a {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* =========================================================================
+   Y2K RETRO-COMPUTING DESIGN SYSTEM UTILITIES
+   ========================================================================= */
+
+/* Classic 90s Dither / CRT Desktop Pattern */
+.bg-desktop-dither {
+  background-color: #008080;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.3) 1px, transparent 0);
+  background-size: 4px 4px;
+}
+
+.bg-desktop-crt {
+  background-color: #008080;
+  background-image: radial-gradient(rgba(0, 240, 255, 0.18) 1px, transparent 0);
+  background-size: 8px 8px;
+}
+
+/* CRT Scanlines Overlay */
+.scanlines-overlay {
+  background: linear-gradient(
+    rgba(18, 19, 26, 0) 50%, 
+    rgba(0, 0, 0, 0.45) 50%
+  );
+  background-size: 100% 3px;
+}
+
+/* 3D Neo-Brutalist Windows Bevels */
+.bevel-outset,
+.bevel-raised {
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+  box-shadow: inset 1px 1px 0px #DFDFDF, inset -1px -1px 0px #000000;
+}
+
+.bevel-raised-sm {
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+}
+
+.bevel-inset,
+.bevel-sunken {
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  box-shadow: inset 1px 1px 0px #000000, inset -1px -1px 0px #DFDFDF;
+}
+
+.bevel-sunken-field {
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+}
+
+.bevel-button {
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #404040;
+  border-bottom: 2px solid #404040;
+  background-color: #D4D0C8;
+  color: #0F172A;
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bevel-button:active,
+.bevel-button-pressed:active {
+  border-top: 2px solid #404040 !important;
+  border-left: 2px solid #404040 !important;
+  border-right: 2px solid #FFFFFF !important;
+  border-bottom: 2px solid #FFFFFF !important;
+  transform: translate(1px, 1px);
+}
+
+/* Outer Window Frame Chassis */
+.window-outer-chassis {
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+  box-shadow: 3px 3px 0px 0px rgba(0, 0, 0, 0.5);
+  background-color: #D4D0C8;
+}
+
+/* Windows 98 Styled Checkbox */
+.win-checkbox {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #FFFFFF;
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+.win-checkbox:checked::before {
+  content: "✓";
+  font-size: 11px;
+  font-weight: 900;
+  color: #000000;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+/* Ruled & Grid Paper Patterns */
+.ruled-paper {
+  background-color: #FDFDFE;
+  background-image: linear-gradient(#b9d5f0 1px, transparent 1px);
+  background-size: 100% 28px;
+  line-height: 28px;
+}
+
+.cyan-grid-paper {
+  background-color: #0F172A;
+  background-image: 
+    linear-gradient(rgba(0, 240, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 240, 255, 0.25) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Audio Equalizer Pulsing Animation */
+@keyframes eq-pulse {
+  0%, 100% { height: 25%; }
+  50% { height: 95%; }
+}
+
+.eq-bar {
+  animation: eq-pulse 1.2s infinite ease-in-out;
+}
+
 

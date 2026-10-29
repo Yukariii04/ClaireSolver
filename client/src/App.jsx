@@ -54,13 +54,36 @@ function AppRoutes() {
   );
 }
 
+function FirebaseStatusBanner() {
+  const { isFirebaseConfigured } = useAuth();
+  if (isFirebaseConfigured) return null;
+  return (
+    <aside
+      aria-label="Configuration notice"
+      className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-200/80 bg-gradient-to-r from-amber-50 to-orange-50 px-4 py-2 text-xs font-medium text-amber-900 shadow-sm backdrop-blur"
+    >
+      <div className="flex items-center gap-2">
+        <span className="inline-block h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+        <span>
+          <strong>Local Demo Mode Active:</strong> Firebase credentials are empty in <code className="rounded bg-amber-100 px-1 py-0.5">client/.env</code>. Canvas strokes and AI solving run smoothly in local demo mode.
+        </span>
+      </div>
+      <span className="hidden text-[11px] text-amber-700 sm:inline">
+        Add keys in client/.env for live cloud sync
+      </span>
+    </aside>
+  );
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <FirebaseStatusBanner />
         <AppRoutes />
       </AuthProvider>
     </BrowserRouter>
   );
 }
+
 

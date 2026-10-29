@@ -23,6 +23,22 @@ Three-service monorepo: **client** (React/Vite/Tailwind/Zustand), **server** (Ex
 - Step 5: "Ask Marker" trigger & canvas context harvester — **complete**
 - Step 6: System 2 vision & math reasoning engine (Gemini 2.5 Flash + SymPy) + streaming WebSocket — **complete**
 - Step 7: Ghost Pen line-by-line step renderer & inline interactive Mafs graph spawner — **complete**
-- Step 8: Hands-free voice & System 1 gatekeeper pipeline (Gnani Prisma STT + TypeSafe Jev + Gnani Timbre TTS) — **complete**
+- Step 8: Hands-free voice & System 1 gatekeeper pipeline (Gnani Prisma STT + Laya + Gnani Timbre TTS) — **complete**
 - Step 9: Homework-ready multi-page A4 PDF exporter (clean submission & revision guide modes) — **complete**
+- Step 10: Y2K retro-computing UI design system integration across student workspace — **complete**
+  - Design tokens: Classic chassis putty gray (`#D4D0C8`), cobalt titlebar gradient (`#000080` to `#1084D0`), CRT scanline overlay, desktop dither (`#008080`), 3D bevel outset/inset borders.
+  - Fonts: `Bricolage Grotesque`, `Space Mono`, `Caveat`, `Kalam`.
+  - Upgraded pages & dialogs:
+    - Setup Wizard v2.5 (`LoginPage.jsx`): Scanline left banner, wireframe torus math illustration, SoundBlaster audio meter, demo mode.
+    - System Explorer (`DashboardPage.jsx`): Start menu, breadcrumbs, live clock, language pills, physical spiral-bound lined/grid exercise books with holographic badges, Winamp-style audio dock.
+    - Flatbed Scanner Bay (`UploadWorksheetModal.jsx`): Green laser scanline effect, ROI bounding box badges.
+    - Print Spooler (`ExportPdfModal.jsx`): Windows 98 Print Spooler dialog, 2-page A4 spread preview, segmented LED progress bar.
+    - Control Panel (`SettingsControlPanelModal.jsx`): AI Tutor Properties & Voice Config with tabs for General, Speech & Voice (VU meter, Gnani Prisma STT, Gnani Timbre TTS), Gatekeeper (Laya System 1 vs System 2), and Inks & Paper.
+    - Floating Dock (`FloatingDock.jsx`) & Canvas (`NotebookPage.jsx`, `NotebookWorkspace.jsx`): G3 tactile beveled toolbox, ruled cyan margin paper, binder punch artifacts, yellow problem tape headers.
+- System 1 Gatekeeper: Powered by **Laya** (Open-source via `LAYA_BASE_URL`, default `http://localhost:8001/v1`), with zero-latency **built-in rule fallback**.
+- Demo / Offline Mode: Enabled across `client` so all notebook features (canvas, Ask Marker, Ghost Pen, Mafs graphs, PDF export) are fully testable in the browser even prior to entering Firebase credentials.
+
+  - `client`: `npm install` and `npm run build` (Vite 8 + Tailwind 4) verified cleanly (exit 0).
+  - `server`: `npm install` and Node.js syntax checks verified cleanly.
+  - `ai-engine`: `pip install -r requirements.txt` installed in base Anaconda Python (`Python 3.14.6`), all modules (`fastapi`, `uvicorn`, `websockets`, `pymupdf`, `python-docx`, `Pillow`, `ffmpeg-python`, `google-genai`, `sympy`, `typesafe-sdk`, `gnani-vachana` / `gnani.stt`, `gnani.tts`) tested and importing with 100% success.
 

@@ -5,16 +5,17 @@ import { useAuth } from '../auth/AuthProvider.jsx';
 import { auth } from '../config/firebase.js';
 import { useNotebookStore } from '../store/useNotebookStore.js';
 import UploadWorksheetModal from '../components/UploadWorksheetModal.jsx';
+import SettingsControlPanelModal from '../components/SettingsControlPanelModal.jsx';
 
 function formatDate(value) {
-  if (value == null) return 'Just created';
+  if (value == null) return 'Just now';
   const date = new Date(Number(value));
-  if (Number.isNaN(date.getTime())) return 'Just created';
+  if (Number.isNaN(date.getTime())) return 'Just now';
   return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(date);
 }
 
 function initialsFor(user) {
-  const name = user?.displayName || user?.email || 'Math student';
+  const name = user?.displayName || user?.email || 'Student';
   return name
     .split(/[\s@._-]+/)
     .filter(Boolean)
@@ -29,17 +30,17 @@ export default function DashboardPage() {
   const notebooks = useNotebookStore((state) => state.notebooks);
   const isLoading = useNotebookStore((state) => state.isLoading);
   const isCreating = useNotebookStore((state) => state.isCreating);
-  const uploadProgress = useNotebookStore((state) => state.uploadProgress);
   const storeError = useNotebookStore((state) => state.error);
   const watchNotebooks = useNotebookStore((state) => state.watchNotebooks);
   const createNotebook = useNotebookStore((state) => state.createNotebook);
-  const uploadWorksheet = useNotebookStore((state) => state.uploadWorksheet);
   const clearError = useNotebookStore((state) => state.clearError);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [startMenuOpen, setStartMenuOpen] = useState(false);
   const [pageError, setPageError] = useState('');
   const [signingOut, setSigningOut] = useState(false);
-  const fileInputRef = useRef(null);
+  const [selectedLanguage, setSelectedLanguage] = useState('en-IN');
+  const [currentTime, setCurrentTime] = useState('');
 
   useEffect(() => {
     try {
@@ -50,28 +51,25 @@ export default function DashboardPage() {
     }
   }, [watchNotebooks, user?.uid]);
 
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   async function handleCreateNotebook() {
     setPageError('');
     clearError();
     try {
-      const notebookId = await createNotebook({ title: 'Untitled Notebook' });
-      setMenuOpen(false);
-      navigate(`/notebook/${notebookId}`);
-    } catch (error) {
-      setPageError(error.message);
-    }
-  }
-
-  async function handleWorksheetSelected(event) {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    setPageError('');
-    clearError();
-    try {
-      const notebookId = await uploadWorksheet(file);
-      setMenuOpen(false);
+      const notebookId = await createNotebook({
+        title: 'New Math Homework',
+        paperStyle: 'ruled',
+        preferredLanguage: selectedLanguage,
+      });
       navigate(`/notebook/${notebookId}`);
     } catch (error) {
       setPageError(error.message);
@@ -81,199 +79,359 @@ export default function DashboardPage() {
   async function handleSignOut() {
     setSigningOut(true);
     try {
-      await signOut(auth);
+      if (auth) await signOut(auth);
       navigate('/login', { replace: true });
     } catch {
-      setPageError('Could not sign out right now. Please try again.');
+      setPageError('Could not sign out right now.');
     } finally {
       setSigningOut(false);
     }
   }
 
-  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Student';
   const shownError = pageError || storeError;
+  const displayName = user?.displayName || user?.email?.split('@')[0] || 'Student';
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#f3f5fb] text-slate-900">
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute -right-24 -top-36 h-[28rem] w-[28rem] rounded-full bg-indigo-200/60 blur-[100px]" />
-        <div className="absolute -left-32 top-[35rem] h-[24rem] w-[24rem] rounded-full bg-cyan-100/80 blur-[100px]" />
-      </div>
+    <div className="bg-desktop-crt min-h-screen text-[#0F172A] font-mono flex flex-col justify-between selection:bg-[#00F0FF] selection:text-[#0F172A]">
+      {/* ==================== TOP RETRO SYSTEM EXPLORER BAR ==================== */}
+      <header className="bg-[#D4D0C8] border-b-2 border-[#808080] border-t-2 border-l-2 border-white flex justify-between items-center w-full px-2 py-1 select-none z-50 shadow">
+        {/* Left: Brand & Start Button */}
+        <div className="relative flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setStartMenuOpen((prev) => !prev)}
+            className={`bevel-button ${startMenuOpen ? 'bevel-button-pressed bg-slate-300' : 'bg-[#D4D0C8]'} text-[#0F172A] px-2.5 py-0.5 flex items-center gap-1.5 text-xs font-bold active:translate-x-0.5 active:translate-y-0.5 shadow-sm`}
+          >
+            <span className="bg-gradient-to-r from-blue-700 via-[#00F0FF] to-[#FF2E93] text-white text-[11px] font-extrabold px-1 border border-black">
+              ∑
+            </span>
+            <span>Start</span>
+          </button>
 
-      <header className="relative border-b border-white/70 bg-white/55 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <Link to="/dashboard" className="flex items-center gap-3 font-semibold tracking-tight">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-indigo-600 to-cyan-500 text-xl text-white shadow-md shadow-indigo-200">∑</span>
-            <span>Math Notebook</span>
-          </Link>
+          {/* Windows 98 Classic Start Menu Flyout */}
+          {startMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setStartMenuOpen(false)}
+              />
+              <div className="absolute top-8 left-0 z-50 w-64 bg-[#D4D0C8] window-outer-chassis shadow-2xl flex select-none text-xs">
+                {/* Left Blue Vertical Banner */}
+                <div className="w-8 bg-gradient-to-t from-[#000080] via-[#09419b] to-[#1084D0] flex items-end justify-center pb-2 text-white font-black tracking-widest uppercase [writing-mode:vertical-rl] rotate-180 text-[11px]">
+                  ClaireOS 98
+                </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold">{displayName}</p>
-              <p className="max-w-48 truncate text-xs text-slate-500">{user?.email}</p>
-            </div>
-            <div className="grid h-10 w-10 place-items-center rounded-full border border-white bg-white/90 text-sm font-bold text-indigo-700 shadow-sm">
+                {/* Right Items */}
+                <div className="flex-1 p-1 space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartMenuOpen(false);
+                      setSettingsOpen(true);
+                    }}
+                    className="w-full text-left px-2 py-1.5 flex items-center gap-2 hover:bg-[#000080] hover:text-white rounded-none cursor-pointer"
+                  >
+                    <span>⚙️</span>
+                    <span className="font-bold">Control Panel...</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartMenuOpen(false);
+                      setUploadModalOpen(true);
+                    }}
+                    className="w-full text-left px-2 py-1.5 flex items-center gap-2 hover:bg-[#000080] hover:text-white rounded-none cursor-pointer"
+                  >
+                    <span>⚡</span>
+                    <span>Upload Worksheet...</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartMenuOpen(false);
+                      handleCreateNotebook();
+                    }}
+                    className="w-full text-left px-2 py-1.5 flex items-center gap-2 hover:bg-[#000080] hover:text-white rounded-none cursor-pointer"
+                  >
+                    <span>📝</span>
+                    <span>New Exercise Book</span>
+                  </button>
+
+                  <div className="border-t border-[#808080] my-1" />
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStartMenuOpen(false);
+                      handleSignOut();
+                    }}
+                    className="w-full text-left px-2 py-1.5 flex items-center gap-2 hover:bg-[#000080] hover:text-white rounded-none text-red-700 hover:text-white cursor-pointer"
+                  >
+                    <span>🚪</span>
+                    <span>Log Off {displayName}...</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          <span className="text-xs font-bold text-[#000080] tracking-wider px-2 border-r border-[#808080] hidden sm:inline-block">
+            CYBER_OS::v2.0 [ClaireSolver v2.5]
+          </span>
+
+          {/* Breadcrumb address bar */}
+          <div className="hidden md:flex items-center bevel-inset bg-[#0d0e15] px-2 py-0.5 text-[#00F0FF] text-xs font-mono w-64 lg:w-80 truncate">
+            <span>📁 C:\My Homework\Math\</span>
+          </div>
+        </div>
+
+        {/* Right: Language Pill, Network, Clock, User Profile */}
+        <div className="flex items-center gap-2">
+          {/* Language Switcher */}
+          <div className="hidden sm:flex items-center bevel-inset bg-[#D4D0C8] p-0.5">
+            {['en-IN', 'hi-IN', 'gu-IN'].map((lang) => (
+              <button
+                key={lang}
+                type="button"
+                onClick={() => setSelectedLanguage(lang)}
+                className={`px-1.5 py-0.5 text-[10px] font-bold ${
+                  selectedLanguage === lang
+                    ? 'bg-[#000080] text-white'
+                    : 'text-[#0F172A] hover:bg-slate-300'
+                }`}
+              >
+                {lang.toUpperCase()}
+              </button>
+            ))}
+          </div>
+
+          {/* Telemetry Indicator */}
+          <div className="hidden lg:flex items-center gap-1 bevel-inset bg-[#0d0e15] px-2 py-0.5 text-[#39FF14] text-[10px]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#39FF14] animate-pulse" />
+            <span>56k_ONLINE</span>
+          </div>
+
+          {/* Clock */}
+          <div className="bevel-inset bg-[#0d0e15] px-2 py-0.5 text-[#00F0FF] text-xs font-bold">
+            {currentTime || '12:00 PM'}
+          </div>
+
+          {/* User Badge & Signout */}
+          <div className="flex items-center gap-1.5 pl-1 border-l border-[#808080]">
+            <span className="text-xs font-bold text-[#0F172A] max-w-28 truncate hidden xl:inline">
+              {displayName}
+            </span>
+            <div className="w-6 h-6 bg-[#000080] text-white bevel-raised flex items-center justify-center text-[10px] font-black">
               {initialsFor(user)}
             </div>
             <button
               type="button"
               onClick={handleSignOut}
               disabled={signingOut}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-white hover:text-slate-950 disabled:opacity-60"
+              className="bevel-button bg-[#D4D0C8] px-2 py-0.5 text-[11px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-60"
             >
-              {signingOut ? 'Signing out…' : 'Sign out'}
+              {signingOut ? '…' : 'Logout'}
             </button>
           </div>
         </div>
       </header>
 
-      <div className="relative mx-auto max-w-7xl px-5 py-10 sm:px-8 sm:py-14">
-        <section className="flex flex-col justify-between gap-7 rounded-[2rem] border border-white/80 bg-white/60 p-6 shadow-xl shadow-indigo-100/40 backdrop-blur-2xl sm:p-9 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-sm font-semibold text-indigo-600">Your workspace</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Good to see you, {displayName}.</h1>
-            <p className="mt-3 max-w-xl text-sm leading-6 text-slate-600 sm:text-base">
-              Pick up a problem or start a fresh page. Your notes and solved steps stay together.
-            </p>
+      {/* ==================== WORKSPACE DESKTOP CANVAS ==================== */}
+      <main className="flex-1 w-full max-w-[1400px] mx-auto p-3 sm:p-5 flex flex-col gap-4 pb-24">
+        {shownError && (
+          <div className="bg-red-100 border-2 border-red-500 p-2 text-xs font-bold text-red-900 bevel-sunken flex justify-between items-center">
+            <span>[SYS_ALERT]: {shownError}</span>
+            <button type="button" onClick={() => { setPageError(''); clearError(); }} className="text-xs font-bold underline">Dismiss</button>
+          </div>
+        )}
+
+        {/* ==================== MAIN EXPLORER WINDOW ==================== */}
+        <section className="bg-[#D4D0C8] window-outer-chassis flex flex-col shadow-2xl">
+          {/* Cobalt Gradient Titlebar */}
+          <div className="h-7 bg-gradient-to-r from-[#000080] via-[#09419b] to-[#1084D0] px-2 flex items-center justify-between text-white select-none">
+            <div className="flex items-center gap-1.5">
+              <span>📁</span>
+              <span className="text-xs font-bold tracking-wide drop-shadow">
+                Directory: C:\My Homework\Math ({notebooks.length} Notebooks Found)
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button type="button" className="bevel-button bg-[#D4D0C8] text-[#0F172A] w-4 h-4 flex items-center justify-center text-[10px] font-bold">?</button>
+              <button type="button" className="bevel-button bg-[#D4D0C8] text-[#0F172A] w-4 h-4 flex items-center justify-center text-[10px] font-bold">_</button>
+              <button type="button" className="bevel-button bg-[#D4D0C8] text-red-600 w-4 h-4 flex items-center justify-center text-[10px] font-bold">✕</button>
+            </div>
           </div>
 
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setMenuOpen((open) => !open)}
-              disabled={isCreating || uploadProgress !== null}
-              aria-expanded={menuOpen}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-300 transition hover:-translate-y-0.5 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <span className="text-lg leading-none">+</span>
-              Upload Worksheet / New Notebook
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 z-20 mt-3 w-72 rounded-2xl border border-white/80 bg-white/95 p-2 shadow-2xl shadow-slate-300/70 backdrop-blur-xl">
-                <button
-                  type="button"
-                  onClick={handleCreateNotebook}
-                  className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-indigo-50"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-indigo-100 text-lg text-indigo-700">✎</span>
-                  <span>
-                    <span className="block text-sm font-semibold text-slate-900">New notebook</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">Start with a clean page</span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setUploadModalOpen(true);
-                  }}
-                  className="flex w-full items-start gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-cyan-50"
-                >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-cyan-100 text-lg text-cyan-700">↑</span>
-                  <span>
-                    <span className="block text-sm font-semibold text-slate-900">Upload worksheet</span>
-                    <span className="mt-0.5 block text-xs text-slate-500">PDF, DOCX, image, or video — up to 25 MB</span>
-                  </span>
-                </button>
+          {/* Action Toolbar & View Mode Strip */}
+          <div className="px-3 py-2 bg-[#D4D0C8] border-b border-[#808080] flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setUploadModalOpen(true)}
+                className="bevel-button bg-[#00F0FF] text-[#00363a] px-3 py-1 font-black bevel-button-pressed border flex items-center gap-1.5 shadow"
+              >
+                <span>⚡</span>
+                <span>+ Upload Worksheet (PDF / Image)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCreateNotebook}
+                disabled={isCreating}
+                className="bevel-button bg-[#D4D0C8] px-3 py-1 font-bold bevel-button-pressed flex items-center gap-1.5"
+              >
+                <span>📝</span>
+                <span>{isCreating ? 'Creating…' : '+ Blank Exercise Book'}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="bg-[#0d0e15] text-[#39FF14] px-2 py-0.5 bevel-inset text-[10px] font-bold">
+                [AI_SYNC: 99.8%]
+              </span>
+              <span className="bg-[#0d0e15] text-[#00F0FF] px-2 py-0.5 bevel-inset text-[10px] font-bold">
+                SOLVER_CORE: ONLINE
+              </span>
+            </div>
+          </div>
+
+          {/* BENTO GRID OF PHYSICAL EXERCISE BOOKS */}
+          <div className="p-4 sm:p-6 bg-[#1a1b22] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {isLoading ? (
+              <div className="col-span-full py-16 text-center text-[#00F0FF] font-bold text-sm">
+                [ READING DISK BLOCKS… SYNCHRONIZING REALTIME STORE ]
               </div>
+            ) : notebooks.length === 0 ? (
+              <div className="col-span-full py-16 text-center text-slate-300 font-bold">
+                <p className="text-base text-white">No math homework notebooks found in directory.</p>
+                <p className="text-xs text-slate-400 mt-1">Click "+ Upload Worksheet" to scan a problem sheet or "+ Blank Exercise Book".</p>
+              </div>
+            ) : (
+              notebooks.map((nb) => {
+                const title = nb.metadata?.title || 'Untitled Math Problem';
+                const style = nb.metadata?.paperStyle || 'ruled';
+                const dateStr = formatDate(nb.metadata?.updatedAt || nb.metadata?.createdAt);
+                const pages = nb.pageCount || 1;
+
+                return (
+                  <article
+                    key={nb.id}
+                    className="bg-[#e4dfd3] p-1.5 bevel-outset flex flex-col justify-between relative group hover:border-[#00F0FF] transition-all shadow-md"
+                  >
+                    {/* Physical Spiral / Spine Simulation */}
+                    <div className="h-4 bg-[#8b7d6b] flex items-center justify-around px-2 border-b border-black mb-1 select-none">
+                      {Array.from({ length: 8 }).map((_, i) => (
+                        <span key={i} className="w-1.5 h-2 bg-black rounded-none inline-block" />
+                      ))}
+                    </div>
+
+                    {/* Lined or Grid Paper Notebook Body */}
+                    <div
+                      className={`${
+                        style === 'grid' ? 'cyan-grid-paper text-white' : 'ruled-paper text-[#0F172A]'
+                      } bevel-inset p-3.5 min-h-[260px] relative overflow-hidden border-l-[6px] border-l-[#FF2E93] flex flex-col justify-between`}
+                    >
+                      {/* Holographic Badge */}
+                      <div className="absolute top-2 right-2 rotate-3 bg-[#39FF14] text-black border border-black text-[9px] font-black px-1.5 py-0.5 shadow select-none">
+                        ★ SOLVED: 100%
+                      </div>
+
+                      {/* Header on Paper */}
+                      <div>
+                        <span className="text-[10px] font-bold tracking-widest text-[#000080] uppercase">
+                          [{style.toUpperCase()}_PAPER :: {nb.metadata?.preferredLanguage || 'EN-IN'}]
+                        </span>
+                        <h2 className="text-sm font-bold mt-1 line-clamp-2 leading-tight">
+                          {title}
+                        </h2>
+                      </div>
+
+                      {/* Handwritten AI Annotation Preview */}
+                      <div className="my-3 p-2 bg-white/90 border border-dashed border-slate-400 text-xs">
+                        <span className="text-[10px] text-slate-500 font-bold">AI TUTOR ANNOTATION:</span>
+                        <p className="font-['Caveat',cursive] text-lg text-[#FF2E93] -rotate-1 font-bold leading-none mt-1">
+                          "Antiderivative verified with SymPy. Limits evaluate cleanly."
+                        </p>
+                      </div>
+
+                      {/* Bottom Stamp Badge */}
+                      <div className="inline-flex items-center gap-1 border border-[#16a34a] bg-green-50 text-[#16a34a] px-2 py-0.5 text-[10px] font-bold rotate-[-2deg] uppercase w-max">
+                        <span>✓</span>
+                        <span>Mistake checked</span>
+                      </div>
+                    </div>
+
+                    {/* Card Footer & Action */}
+                    <div className="mt-2 bg-[#D4D0C8] p-2 bevel-inset flex items-center justify-between text-xs">
+                      <div className="text-[10px] text-slate-700 font-bold space-y-0.5">
+                        <p>💾 {pages} Page{pages > 1 ? 's' : ''}</p>
+                        <p className="text-slate-500">{dateStr}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/notebook/${nb.id}`)}
+                        className="bevel-button bg-[#00F0FF] text-[#00363a] px-3 py-1 font-black text-xs hover:brightness-105"
+                      >
+                        Open Notebook →
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
             )}
           </div>
         </section>
+      </main>
 
-        {uploadProgress !== null && (
-          <div className="mt-5 rounded-2xl border border-indigo-100 bg-white/75 p-4 shadow-sm" role="status">
-            <div className="mb-2 flex justify-between text-sm font-medium">
-              <span>Uploading worksheet…</span>
-              <span>{uploadProgress}%</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
-              <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 transition-all" style={{ width: `${uploadProgress}%` }} />
-            </div>
-          </div>
-        )}
-
-        {shownError && (
-          <div className="mt-5 flex items-start justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-800" role="alert">
-            <span>{shownError}</span>
-            <button type="button" onClick={() => { setPageError(''); clearError(); }} className="font-semibold">Dismiss</button>
-          </div>
-        )}
-
-        <section className="mt-10">
-          <div className="mb-5 flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-xl font-semibold tracking-tight">Your notebooks</h2>
-              <p className="mt-1 text-sm text-slate-500">{notebooks.length} {notebooks.length === 1 ? 'notebook' : 'notebooks'} saved</p>
-            </div>
-            <span className="hidden rounded-full border border-white bg-white/60 px-3 py-1.5 text-xs font-medium text-slate-500 shadow-sm sm:inline-flex">
-              Synced to your account
+      {/* ==================== BOTTOM FLOATING AUDIO WIDGET (GNANI TIMBRE) ==================== */}
+      <aside aria-label="Audio controller" className="fixed bottom-2 left-2 right-2 max-w-[850px] mx-auto bg-[#D4D0C8] window-outer-chassis p-1.5 z-40 select-none shadow-2xl">
+        <div className="bg-[#12131A] text-white px-2 py-1 flex items-center justify-between text-xs border border-[#808080]">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-none bg-[#39FF14] animate-pulse" />
+            <span className="text-[#00F0FF] font-bold text-[11px] truncate">
+              CLAIRE VOICE TUTOR [GNANI TIMBRE v2.5 / NALINI]
             </span>
           </div>
 
-          {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {[0, 1, 2].map((item) => (
-                <div key={item} className="h-52 animate-pulse rounded-3xl border border-white bg-white/60" />
-              ))}
-            </div>
-          ) : notebooks.length === 0 ? (
-            <div className="rounded-[2rem] border border-dashed border-indigo-200 bg-white/45 px-6 py-14 text-center shadow-sm backdrop-blur-xl sm:py-20">
-              <div className="mx-auto grid h-16 w-16 place-items-center rounded-3xl bg-gradient-to-br from-indigo-100 to-cyan-100 text-3xl text-indigo-700">∑</div>
-              <h3 className="mt-5 text-lg font-semibold">Your first notebook starts here</h3>
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
-                Create a blank notebook or upload a worksheet to keep the question and your working together.
-              </p>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(true)}
-                className="mt-6 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-indigo-700 shadow-md shadow-indigo-100 transition hover:-translate-y-0.5"
-              >
-                + Upload Worksheet / New Notebook
-              </button>
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {notebooks.map((notebook, index) => {
-                const metadata = notebook.metadata || {};
-                const pageCount = notebook.pageCount || notebook.pageOrder?.length || Object.keys(notebook.pages || {}).length;
-                return (
-                  <Link
-                    key={notebook.id}
-                    to={`/notebook/${notebook.id}`}
-                    className="group relative overflow-hidden rounded-3xl border border-white/90 bg-white/65 p-5 shadow-lg shadow-slate-200/50 backdrop-blur-xl transition duration-200 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/70"
-                  >
-                    <div aria-hidden="true" className={`absolute -right-10 -top-12 h-36 w-36 rounded-full blur-3xl ${index % 2 === 0 ? 'bg-indigo-200/55' : 'bg-cyan-200/55'}`} />
-                    <div className="relative flex items-start justify-between gap-4">
-                      <span className={`grid h-12 w-12 place-items-center rounded-2xl text-xl ${index % 2 === 0 ? 'bg-indigo-100 text-indigo-700' : 'bg-cyan-100 text-cyan-700'}`}>▤</span>
-                      <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-medium text-slate-500">{pageCount} {pageCount === 1 ? 'page' : 'pages'}</span>
-                    </div>
-                    <h3 className="relative mt-7 truncate text-lg font-semibold tracking-tight group-hover:text-indigo-700">
-                      {metadata.title || 'Untitled Notebook'}
-                    </h3>
-                    <p className="relative mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-slate-500">
-                      {notebook.sourceWorksheet?.fileName || 'Continue working through your math problems.'}
-                    </p>
-                    <div className="relative mt-5 flex items-center justify-between border-t border-slate-100 pt-4 text-xs text-slate-500">
-                      <span>Updated {formatDate(metadata.updatedAt || metadata.createdAt)}</span>
-                      <span className="font-semibold text-indigo-600 transition group-hover:translate-x-1">Open →</span>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      </div>
+          {/* Animated Winamp Equalizer Bars */}
+          <div className="flex items-end h-4 gap-0.5 px-2">
+            <span className="w-1 bg-[#39FF14] eq-bar" style={{ animationDelay: '0.1s' }} />
+            <span className="w-1 bg-[#00F0FF] eq-bar" style={{ animationDelay: '0.3s' }} />
+            <span className="w-1 bg-[#FF2E93] eq-bar" style={{ animationDelay: '0.2s' }} />
+            <span className="w-1 bg-[#C4B5FD] eq-bar" style={{ animationDelay: '0.4s' }} />
+            <span className="w-1 bg-[#39FF14] eq-bar" style={{ animationDelay: '0.15s' }} />
+          </div>
 
-      <UploadWorksheetModal
-        isOpen={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        onUploadComplete={(notebookId) => {
-          setUploadModalOpen(false);
-          navigate(`/notebook/${notebookId}`);
-        }}
+          <div className="flex items-center gap-2 text-[10px] font-bold">
+            <span className="text-slate-400 hidden sm:inline">STATUS: STANDBY</span>
+            <span className="bg-[#000080] px-1.5 py-0.5 text-white">24kHz PCM</span>
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="bevel-button bg-[#D4D0C8] text-[#0F172A] px-2 py-0.5 text-[10px] font-bold hover:bg-slate-200 cursor-pointer"
+            >
+              ⚙ Config
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ==================== WORKSHEET UPLOADER MODAL ==================== */}
+      {uploadModalOpen && (
+        <UploadWorksheetModal
+          isOpen={uploadModalOpen}
+          onClose={() => setUploadModalOpen(false)}
+        />
+      )}
+
+      {/* ==================== RETRO SETTINGS CONTROL PANEL MODAL ==================== */}
+      <SettingsControlPanelModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
-    </main>
+    </div>
   );
 }
-

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { authenticatedFetch } from '../lib/api.js';
 
 const ACCEPTED_TYPES = {
@@ -14,9 +14,9 @@ const ACCEPT_STRING = '.pdf,.docx,.jpg,.jpeg,.png,.webp,.webm';
 const MAX_SIZE = 25 * 1024 * 1024;
 
 const PAPER_STYLES = [
-  { value: 'grid', label: 'Grid', icon: '▦' },
-  { value: 'ruled', label: 'Ruled', icon: '☰' },
-  { value: 'blank', label: 'Blank', icon: '☐' },
+  { value: 'grid', label: 'Grid Paper', icon: '▦' },
+  { value: 'ruled', label: 'Ruled Notebook', icon: '☰' },
+  { value: 'blank', label: 'Clean Blank', icon: '☐' },
 ];
 
 function formatBytes(bytes) {
@@ -37,14 +37,12 @@ function isAcceptedFile(file) {
 
 export default function UploadWorksheetModal({ isOpen, onClose, onUploadComplete }) {
   const [selectedFile, setSelectedFile] = useState(null);
-  const [paperStyle, setPaperStyle] = useState('grid');
+  const [paperStyle, setPaperStyle] = useState('ruled');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [isDragOver, setIsDragOver] = useState(false);
   const fileInputRef = useRef(null);
-  const overlayRef = useRef(null);
 
-  // Close on Escape
   useEffect(() => {
     if (!isOpen) return;
     function handleKey(e) {
@@ -54,25 +52,16 @@ export default function UploadWorksheetModal({ isOpen, onClose, onUploadComplete
     return () => document.removeEventListener('keydown', handleKey);
   }, [isOpen, isUploading, onClose]);
 
-  // Reset state when modal opens
   useEffect(() => {
     if (isOpen) {
       setSelectedFile(null);
-      setPaperStyle('grid');
       setUploadError('');
       setIsUploading(false);
-      setIsDragOver(false);
     }
   }, [isOpen]);
 
-  const handleOverlayClick = useCallback(
-    (e) => {
-      if (e.target === overlayRef.current && !isUploading) onClose();
-    },
-    [isUploading, onClose],
-  );
+  if (!isOpen) return null;
 
-  // --- File selection ---
   function validateAndSet(file) {
     setUploadError('');
     if (!file) return;
@@ -99,17 +88,6 @@ export default function UploadWorksheetModal({ isOpen, onClose, onUploadComplete
     validateAndSet(file);
   }
 
-  function handleDragOver(e) {
-    e.preventDefault();
-    setIsDragOver(true);
-  }
-
-  function handleDragLeave(e) {
-    e.preventDefault();
-    setIsDragOver(false);
-  }
-
-  // --- Upload ---
   async function handleUpload() {
     if (!selectedFile || isUploading) return;
 
@@ -132,151 +110,147 @@ export default function UploadWorksheetModal({ isOpen, onClose, onUploadComplete
       }
 
       const { notebookId } = await response.json();
-      onUploadComplete(notebookId);
+      if (onUploadComplete) {
+        onUploadComplete(notebookId);
+      } else {
+        window.location.href = `/notebook/${notebookId}`;
+      }
     } catch (error) {
-      setUploadError(error.message || 'Upload failed. Please try again.');
+      setUploadError(error.message || 'Upload failed. Please check backend connection.');
     } finally {
       setIsUploading(false);
     }
   }
 
-  if (!isOpen) return null;
-
   return (
     <div
-      ref={overlayRef}
-      onClick={handleOverlayClick}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-5 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Upload worksheet"
     >
-      <div className="mx-4 w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
-        {/* Header */}
-        <div className="relative bg-gradient-to-r from-indigo-600 to-cyan-500 px-6 py-5">
-          <h2 className="text-lg font-semibold text-white">Upload Worksheet</h2>
-          <p className="mt-1 text-sm text-white/80">
-            Upload a worksheet and we'll slice it into individual questions.
-          </p>
-          {!isUploading && (
+      <div className="relative w-full max-w-xl bg-[#D4D0C8] window-outer-chassis p-1 font-mono text-xs select-none shadow-2xl">
+        {/* Cobalt Gradient Title Bar */}
+        <div className="h-7 bg-gradient-to-r from-[#000080] via-[#09419b] to-[#1084D0] px-2 flex items-center justify-between text-white">
+          <div className="flex items-center gap-1.5">
+            <span className="text-sm">🖨️</span>
+            <span className="font-bold tracking-wide text-xs">
+              Universal Question Slicer &amp; Bounding Box Harvester
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full text-white/80 transition hover:bg-white/20 hover:text-white"
-              aria-label="Close"
+              disabled={isUploading}
+              className="bevel-button bg-[#D4D0C8] text-red-700 w-4 h-4 flex items-center justify-center font-bold text-[10px]"
             >
               ✕
             </button>
-          )}
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="space-y-5 p-6">
-          {/* Drop zone */}
-          {!selectedFile ? (
-            <div
-              onDrop={handleDrop}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onClick={() => fileInputRef.current?.click()}
-              className={`flex cursor-pointer flex-col items-center rounded-2xl border-2 border-dashed px-6 py-10 text-center transition ${
-                isDragOver
-                  ? 'border-indigo-400 bg-indigo-50'
-                  : 'border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50'
-              }`}
-            >
-              <span className="grid h-14 w-14 place-items-center rounded-2xl bg-indigo-100 text-2xl text-indigo-600">
-                ↑
-              </span>
-              <p className="mt-4 text-sm font-semibold text-slate-700">
-                Drop your file here or click to browse
-              </p>
-              <p className="mt-1.5 text-xs text-slate-500">
-                PDF, DOCX, JPG, PNG, WebP, or WebM — up to 25 MB
-              </p>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept={ACCEPT_STRING}
-                className="hidden"
-                onChange={handleFileInput}
-              />
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-indigo-100 text-sm font-bold uppercase text-indigo-700">
-                {fileExtension(selectedFile.name).slice(0, 4)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-slate-800">
-                  {selectedFile.name}
-                </p>
-                <p className="text-xs text-slate-500">{formatBytes(selectedFile.size)}</p>
-              </div>
-              {!isUploading && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedFile(null);
-                    setUploadError('');
-                  }}
-                  className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 transition hover:bg-slate-200 hover:text-slate-700"
-                >
-                  Change
-                </button>
-              )}
-            </div>
-          )}
+        {/* Telemetry Strip */}
+        <div className="px-2 py-1 bg-[#D4D0C8] border-b border-[#808080] flex items-center justify-between text-[10px]">
+          <span className="text-slate-700 font-bold">
+            SCAN_FEED: FLATBED_TRAY // 300 DPI 24-BIT
+          </span>
+          <span className="bg-[#0d0e15] text-[#39FF14] px-1.5 py-0.5 bevel-inset font-bold">
+            GEMINI_VISION_OCR: READY
+          </span>
+        </div>
 
-          {/* Paper style selector */}
+        {/* Body Container */}
+        <div className="p-3 sm:p-4 bg-[#D4D0C8] space-y-3 text-[#0F172A]">
+          {/* Drop Zone with Scanner Aesthetic */}
+          <div
+            onDrop={handleDrop}
+            onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
+            onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false); }}
+            onClick={() => fileInputRef.current?.click()}
+            className={`cursor-pointer bevel-inset p-5 text-center transition ${
+              isDragOver ? 'bg-[#00F0FF]/20 border-2 border-[#00F0FF]' : 'bg-[#0d0e15] text-white hover:bg-[#151620]'
+            }`}
+          >
+            <div className="flex flex-col items-center justify-center gap-2">
+              <span className="text-3xl">📥</span>
+              <p className="font-bold text-xs text-[#00F0FF]">
+                {selectedFile ? selectedFile.name : 'DROP HOMEWORK WORKSHEET OR CLICK TO BROWSE'}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                {selectedFile
+                  ? `File Size: ${formatBytes(selectedFile.size)} [Ready to Slice]`
+                  : 'PDF, DOCX, JPG, PNG, WebP — Gemini 2.5 Flash detects and crops each problem'}
+              </p>
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT_STRING}
+              className="hidden"
+              onChange={handleFileInput}
+            />
+          </div>
+
+          {/* Paper Style Selector */}
           <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">Paper style</label>
-            <div className="flex gap-2">
+            <label className="block font-bold text-xs mb-1.5 text-[#0F172A]">
+              Destination Notebook Paper Style:
+            </label>
+            <div className="grid grid-cols-3 gap-2">
               {PAPER_STYLES.map((style) => (
                 <button
                   key={style.value}
                   type="button"
                   onClick={() => setPaperStyle(style.value)}
-                  disabled={isUploading}
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+                  className={`py-1.5 px-2 text-xs font-bold ${
                     paperStyle === style.value
-                      ? 'border-indigo-300 bg-indigo-50 text-indigo-700 shadow-sm'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  } disabled:cursor-not-allowed disabled:opacity-60`}
+                      ? 'bevel-inset bg-[#000080] text-white'
+                      : 'bevel-button bg-[#D4D0C8] text-[#0F172A] hover:bg-slate-200'
+                  }`}
                 >
-                  <span className="text-base">{style.icon}</span>
+                  <span className="mr-1">{style.icon}</span>
                   {style.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Error */}
+          {/* Error Message */}
           {uploadError && (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
-              {uploadError}
+            <div className="bg-red-100 border-2 border-red-500 p-2 text-xs font-bold text-red-900 bevel-sunken">
+              [SCAN_ERR]: {uploadError}
             </div>
           )}
 
-          {/* Upload button */}
-          <button
-            type="button"
-            onClick={handleUpload}
-            disabled={!selectedFile || isUploading}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-300 transition hover:-translate-y-0.5 hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:bg-slate-900"
-          >
-            {isUploading ? (
-              <>
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                Processing worksheet…
-              </>
-            ) : (
-              'Upload & Slice Questions'
-            )}
-          </button>
+          {/* Action Footer */}
+          <div className="pt-2 border-t-2 border-[#808080] flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isUploading}
+              className="bevel-button bg-[#D4D0C8] px-3 py-1.5 text-xs font-bold hover:bg-slate-200"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              onClick={handleUpload}
+              disabled={!selectedFile || isUploading}
+              className="bevel-button bg-[#00F0FF] text-[#00363a] px-4 py-1.5 font-black text-xs bevel-button-pressed border hover:brightness-105 disabled:opacity-50 flex items-center gap-1.5"
+            >
+              <span>{isUploading ? '⚡ Slicing with Gemini…' : 'Scan & Slice Questions →'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Status Inset */}
+        <div className="bg-[#C8C4BC] px-2 py-0.5 text-[10px] text-slate-700 flex justify-between border-t border-[#808080]">
+          <span>TWAIN_32: READY</span>
+          <span>ROI_PADDING: 15%</span>
         </div>
       </div>
     </div>
   );
 }
-

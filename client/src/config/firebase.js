@@ -26,17 +26,37 @@ const missingConfig = requiredConfig.filter((key) => {
   return !value || value.includes('your-project') || value.startsWith('your-');
 });
 
-if (missingConfig.length > 0) {
-  throw new Error(
-    `Missing Firebase client configuration: ${missingConfig.join(', ')}. ` +
-      'Copy client/.env.example to client/.env and fill in the Firebase web app values.',
+export const isFirebaseConfigured = missingConfig.length === 0;
+export const missingFirebaseConfig = missingConfig;
+
+let appInstance = null;
+let authInstance = null;
+let googleProviderInstance = null;
+let databaseInstance = null;
+let storageInstance = null;
+
+if (isFirebaseConfigured) {
+  try {
+    appInstance = getApps().length ? getApp() : initializeApp(firebaseConfig);
+    authInstance = getAuth(appInstance);
+    googleProviderInstance = new GoogleAuthProvider();
+    googleProviderInstance.setCustomParameters({ prompt: 'select_account' });
+    databaseInstance = getDatabase(appInstance, firebaseConfig.databaseURL);
+    storageInstance = getStorage(appInstance);
+  } catch (error) {
+    console.error('[ClaireSolver] Failed to initialize Firebase:', error);
+  }
+} else {
+  console.warn(
+    `[ClaireSolver] Firebase is not yet configured (${missingConfig.join(', ')}). ` +
+      'App running in Offline / Demo Mode. Fill client/.env to connect live Firebase.'
   );
 }
 
-export const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(firebaseApp);
-export const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: 'select_account' });
-export const database = getDatabase(firebaseApp, firebaseConfig.databaseURL);
-export const storage = getStorage(firebaseApp);
+export const firebaseApp = appInstance;
+export const auth = authInstance;
+export const googleProvider = googleProviderInstance;
+export const database = databaseInstance;
+export const storage = storageInstance;
+
 

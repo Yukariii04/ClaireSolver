@@ -11,20 +11,20 @@ import { useStepPlaybackQueue } from '../store/useStepPlaybackQueue.js';
 
 const PAPER_BACKGROUNDS = {
   grid: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FDFDFE',
     backgroundImage: [
-      'linear-gradient(rgba(99,102,241,0.07) 1px, transparent 1px)',
-      'linear-gradient(90deg, rgba(99,102,241,0.07) 1px, transparent 1px)',
+      'linear-gradient(rgba(0, 240, 255, 0.25) 1px, transparent 1px)',
+      'linear-gradient(90deg, rgba(0, 240, 255, 0.25) 1px, transparent 1px)',
     ].join(', '),
     backgroundSize: '24px 24px',
   },
   ruled: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FDFDFE',
     backgroundImage:
-      'repeating-linear-gradient(transparent, transparent 23px, rgba(99,102,241,0.10) 23px, rgba(99,102,241,0.10) 24px)',
+      'repeating-linear-gradient(transparent, transparent 27px, #b9d5f0 27px, #b9d5f0 28px)',
   },
   blank: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FDFDFE',
   },
 };
 
@@ -211,40 +211,45 @@ const NotebookPage = forwardRef(function NotebookPage(
       data-page-id={pageId}
       onClick={() => onFocus?.(pageId)}
       className={[
-        'relative mx-auto flex w-full max-w-[800px] flex-col overflow-y-auto rounded-2xl border bg-white shadow-xl transition-shadow select-none',
+        'relative mx-auto flex w-full max-w-[820px] flex-col overflow-y-auto bg-white window-outer-chassis shadow-2xl transition-all select-none border-l-[8px] border-l-[#FF2E93]',
         isActive
-          ? 'border-indigo-300 shadow-indigo-100/60 ring-2 ring-indigo-200/50'
-          : 'border-slate-200',
+          ? 'ring-2 ring-[#00F0FF]'
+          : 'opacity-95',
       ].join(' ')}
       style={{ minHeight: '1130px', aspectRatio: '210 / 297' }}
     >
+      {/* Binder Perforation Holes Simulation */}
+      <div className="absolute left-1 top-8 w-2 h-2 rounded-full bg-[#0d0e15] border border-[#808080] pointer-events-none z-20" />
+      <div className="absolute left-1 top-28 w-2 h-2 rounded-full bg-[#0d0e15] border border-[#808080] pointer-events-none z-20" />
+      <div className="absolute left-1 bottom-12 w-2 h-2 rounded-full bg-[#0d0e15] border border-[#808080] pointer-events-none z-20" />
+
       {/* ── Pinned Question Header ─────────────────────────────────── */}
       {page.questionImageUrl && (
         <div
           ref={headerRef}
           data-question-header
           onClick={handleHeaderClick}
-          className={`shrink-0 border-b-2 border-indigo-100 bg-gradient-to-b from-white to-slate-50/80 px-5 py-4 transition ${
+          className={`shrink-0 border-b-2 border-[#808080] bg-[#FFFBEB] px-5 py-3 transition shadow-xs ${
             activeTool === 'marker'
-              ? 'cursor-pointer hover:bg-amber-50/40'
+              ? 'cursor-pointer hover:bg-yellow-100'
               : ''
           }`}
           style={{ maxHeight: '30%', overflow: 'hidden' }}
         >
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-start gap-2">
-              <span className="mt-0.5 shrink-0 rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-600">
-                Q{page.pageNumberLabel.replace(/\D/g, '') || ''}
+              <span className="shrink-0 bg-[#000080] text-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bevel-raised">
+                [Q{page.pageNumberLabel.replace(/\D/g, '') || '1'} :: PROBLEM]
               </span>
               {page.questionSummary && (
-                <p className="line-clamp-2 text-xs leading-relaxed text-slate-600">
+                <p className="line-clamp-2 text-xs font-mono font-bold text-slate-800">
                   {page.questionSummary}
                 </p>
               )}
             </div>
             {activeTool === 'marker' && (
-              <span className="shrink-0 rounded-md border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-                Click to ask Claire
+              <span className="shrink-0 border border-black bg-[#39FF14] text-black px-1.5 py-0.5 text-[9px] font-black uppercase shadow-xs">
+                ★ Click to Ask Claire
               </span>
             )}
           </div>
@@ -252,7 +257,7 @@ const NotebookPage = forwardRef(function NotebookPage(
             src={page.questionImageUrl}
             alt={page.questionSummary || `Question on ${page.pageNumberLabel}`}
             crossOrigin="anonymous"
-            className="mt-3 max-h-[calc(100%-2.5rem)] w-full object-contain"
+            className="mt-2.5 max-h-[calc(100%-2.5rem)] w-full object-contain bevel-sunken"
             draggable={false}
           />
         </div>

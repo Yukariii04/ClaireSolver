@@ -13,7 +13,7 @@ import {
   ref as storageRef,
   uploadBytesResumable,
 } from 'firebase/storage';
-import { auth, database, storage } from '../config/firebase.js';
+import { auth, database, isFirebaseConfigured, storage } from '../config/firebase.js';
 import {
   createEmptyPage,
   normalizeArray,
@@ -23,6 +23,33 @@ import {
   PAPER_STYLES,
   PREFERRED_LANGUAGES,
 } from '../lib/notebookSchema.js';
+
+const DEMO_NOTEBOOK_ID = 'demo-calculus-101';
+const DEFAULT_DEMO_NOTEBOOK = {
+  id: DEMO_NOTEBOOK_ID,
+  metadata: {
+    title: 'Calculus: Indefinite Integrals & Derivatives (Demo)',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    paperStyle: 'ruled',
+    preferredLanguage: 'en-IN',
+  },
+  pageOrder: ['page_1'],
+  pages: {
+    page_1: {
+      id: 'page_1',
+      pageNumber: 1,
+      paperStyle: 'ruled',
+      questionText: 'Evaluate the indefinite integral: \\int (3x^2 - 4x + 5) \\, dx and find critical points.',
+      questionImageUrl: null,
+      questionBoundingBox: null,
+      strokes: [],
+      aiSteps: [],
+      updatedAt: Date.now(),
+    },
+  },
+  sourceWorksheet: null,
+};
 
 const MAX_WORKSHEET_BYTES = 25 * 1024 * 1024;
 const IMAGE_CONTENT_TYPES = {
@@ -36,7 +63,10 @@ const IMAGE_CONTENT_TYPES = {
 };
 
 function requireUser() {
-  const user = auth.currentUser;
+  const user = auth?.currentUser;
+  if (!user && !isFirebaseConfigured) {
+    return { uid: 'demo-student', displayName: 'Student (Demo Mode)', email: 'demo@clairesolver.app' };
+  }
   if (!user) throw new Error('Sign in before accessing notebooks.');
   return user;
 }
@@ -113,6 +143,23 @@ export const useNotebookStore = create((set, get) => ({
   watchNotebooks: () => {
     const user = requireUser();
     set({ notebooks: [], isLoading: true, error: null });
+
+    if (!database || !isFirebaseConfigured) {
+      set({
+        notebooks: [
+          {
+            id: DEMO_NOTEBOOK_ID,
+            metadata: DEFAULT_DEMO_NOTEBOOK.metadata,
+            pageCount: 1,
+            sourceWorksheet: null,
+          },
+        ],
+        isLoading: false,
+        error: null,
+      });
+      return () => {};
+    }
+
     return onValue(
       ref(database, `notebookIndex/${user.uid}`),
       (snapshot) => {
@@ -149,6 +196,13 @@ export const useNotebookStore = create((set, get) => ({
   loadNotebook: (notebookId) => {
     const user = requireUser();
     set({ activeNotebookId: notebookId, activeNotebook: null, isLoading: true, error: null });
+
+    if (!database || !isFirebaseConfigured) {
+      const active = { ...DEFAULT_DEMO_NOTEBOOK, id: notebookId };
+      set({ activeNotebook: active, isLoading: false });
+      return () => {};
+    }
+
     return onValue(
       ref(database, notebookPath(user.uid, notebookId)),
       (snapshot) => {
@@ -172,6 +226,44 @@ export const useNotebookStore = create((set, get) => ({
       throw new Error('Choose en-IN, hi-IN, or gu-IN as the preferred language.');
     }
     const notebookTitle = typeof title === 'string' ? title.trim().slice(0, 160) : '';
+
+    if (!database || !isFirebaseConfigured) {
+      const demoId = `demo-${Date.now()}`;
+      const demoNb = {
+        id: demoId,
+        metadata: {
+          title: notebookTitle || 'Untitled Notebook',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          paperStyle,
+          preferredLanguage,
+        },
+        pages: {
+          page_1: {
+            id: 'page_1',
+            pageNumber: 1,
+            paperStyle,
+            questionText: 'Start writing your math problem or summon Claire with the Ask Marker…',
+            questionImageUrl: null,
+            questionBoundingBox: null,
+            strokes: [],
+            aiSteps: [],
+            updatedAt: Date.now(),
+          },
+        },
+        pageOrder: ['page_1'],
+        sourceWorksheet: null,
+      };
+      set((state) => ({
+        notebooks: [
+          { id: demoId, metadata: demoNb.metadata, pageCount: 1, sourceWorksheet: null },
+          ...state.notebooks,
+        ],
+        activeNotebook: demoNb,
+        activeNotebookId: demoId,
+      }));
+      return demoId;
+    }
 
     const notebookRef = push(ref(database, `notebooks/${user.uid}`));
     if (!notebookRef.key) throw new Error('Could not allocate a notebook id.');
@@ -342,12 +434,15 @@ export const useNotebookStore = create((set, get) => ({
     if (!Array.isArray(strokes)) throw new Error('Strokes must be an array.');
 
     const serializedStrokes = JSON.stringify(strokes);
-    const updatedAt = serverTimestamp();
-    await update(ref(database), {
-      [`${notebookPath(user.uid, notebookId)}/pages/${pageId}/userStrokes`]: serializedStrokes,
-      [`${notebookPath(user.uid, notebookId)}/metadata/updatedAt`]: updatedAt,
-      [`${notebookIndexPath(user.uid, notebookId)}/updatedAt`]: updatedAt,
-    });
+
+    if (database && isFirebaseConfigured) {
+      const updatedAt = serverTimestamp();
+      await update(ref(database), {
+        [`${notebookPath(user.uid, notebookId)}/pages/${pageId}/userStrokes`]: serializedStrokes,
+        [`${notebookPath(user.uid, notebookId)}/metadata/updatedAt`]: updatedAt,
+        [`${notebookIndexPath(user.uid, notebookId)}/updatedAt`]: updatedAt,
+      });
+    }
 
     set((state) => {
       if (state.activeNotebookId !== notebookId || !state.activeNotebook) return {};
@@ -369,6 +464,31 @@ export const useNotebookStore = create((set, get) => ({
     const user = requireUser();
     validatePageId(pageId);
     if (!step || typeof step !== 'object') throw new Error('Provide a solved step object.');
+
+    if (!database || !isFirebaseConfigured) {
+      let savedStep = null;
+      set((state) => {
+        if (!state.activeNotebook) return {};
+        const page = state.activeNotebook.pages?.[pageId] || createEmptyPage(pageLabelFromId(pageId));
+        const currentSteps = Array.isArray(page.aiSteps) ? page.aiSteps : [];
+        savedStep = normalizeAiStep(step, currentSteps.length + 1);
+        return {
+          activeNotebook: {
+            ...state.activeNotebook,
+            metadata: { ...state.activeNotebook.metadata, updatedAt: Date.now() },
+            pages: {
+              ...state.activeNotebook.pages,
+              [pageId]: {
+                ...page,
+                aiSteps: [...currentSteps, savedStep],
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        };
+      });
+      return savedStep;
+    }
 
     const pageRef = ref(database, `${notebookPath(user.uid, notebookId)}/pages/${pageId}`);
     const transaction = await runTransaction(pageRef, (currentValue) => {
@@ -401,8 +521,39 @@ export const useNotebookStore = create((set, get) => ({
     const user = requireUser();
     validatePageId(afterPageId);
     const draft = pageDraft && typeof pageDraft === 'object' ? pageDraft : {};
-    let insertedPageId = null;
-    const notebookRef = ref(database, notebookPath(user.uid, notebookId));
+
+    if (!database || !isFirebaseConfigured) {
+      let insertedPageId = null;
+      set((state) => {
+        if (!state.activeNotebook) return {};
+        const pages = state.activeNotebook.pages || {};
+        insertedPageId = nextContinuationId(afterPageId, pages);
+        const continuation = {
+          id: insertedPageId,
+          pageNumber: pages[afterPageId]?.pageNumber || 1,
+          paperStyle: pages[afterPageId]?.paperStyle || state.activeNotebook.metadata?.paperStyle || 'ruled',
+          questionText: 'Continuation sheet…',
+          isContinuation: true,
+          parentPageId: afterPageId,
+          strokes: [],
+          aiSteps: [],
+          updatedAt: Date.now(),
+        };
+        const pageOrder = [...(state.activeNotebook.pageOrder || ['page_1'])];
+        const afterIndex = pageOrder.indexOf(afterPageId);
+        if (afterIndex >= 0) pageOrder.splice(afterIndex + 1, 0, insertedPageId);
+        else pageOrder.push(insertedPageId);
+
+        return {
+          activeNotebook: {
+            ...state.activeNotebook,
+            pageOrder,
+            pages: { ...pages, [insertedPageId]: continuation },
+          },
+        };
+      });
+      return insertedPageId;
+    }
 
     const transaction = await runTransaction(notebookRef, (currentValue) => {
       if (!currentValue || typeof currentValue !== 'object') return;

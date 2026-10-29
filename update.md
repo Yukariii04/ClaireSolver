@@ -159,6 +159,73 @@
 - `client/src/components/NotebookWorkspace.jsx`
 - `memory.md`
 
+---
+
+## 2026-10-29 — Laya Integration & Frontend White-Screen Resolution
+
+### What was done
+1. **Frontend White-Screen Fix**:
+   - Diagnosed root cause: `client/src/config/firebase.js` was throwing an unhandled top-level exception at bundle import time when Firebase web environment variables were absent or placeholder.
+   - Refactored `client/src/config/firebase.js` to avoid crashing top-level evaluation; exported `isFirebaseConfigured` and `missingFirebaseConfig` with graceful mock handles.
+   - Updated `client/src/auth/AuthProvider.jsx` and `client/src/pages/LoginPage.jsx` to support seamless Local Demo Mode (`demo-student`).
+   - Extended `client/src/store/useNotebookStore.js` and `client/src/components/NotebookWorkspace.jsx` with local in-memory fallback state so the notebook canvas, Ask Marker, Ghost Pen, graphs, and PDF export can be tested without live cloud credentials.
+   - Added `FirebaseStatusBanner` to `client/src/App.jsx` informing the developer when running in local demo mode.
+2. **Laya System 1 Gatekeeper Integration**:
+   - Enhanced `ai-engine/jev_gatekeeper.py` to support **Laya** via `LAYA_BASE_URL` (defaulting to `http://localhost:8001/v1`), leveraging the `TypeSafeClient` wire protocol compatibility.
+   - Preserved fallback hierarchy: Laya / TypeSafe Cloud -> In-memory rule engine (zero latency, zero cost).
+   - Added `LAYA_BASE_URL` configuration to `ai-engine/.env` and `ai-engine/.env.example`.
+
+---
+
+## 2026-10-29 — STEP 10: Y2K Retro-Computing UI Design System Integration
+
+### What was done
+1. **Design System & Visual Tokens (`client/src/index.css`)**:
+   - Integrated full Y2K cyber-retro design system tokens matching MotionArray asset #1431247 (*19 Y2K Old Computer Vector Elements*).
+   - Loaded fonts: `Bricolage Grotesque`, `Space Mono`, `Caveat`, `Kalam`.
+   - Added authentic retro utilities: `.bg-desktop-dither`, `.bg-desktop-crt`, `.scanlines-overlay`, `.bevel-outset` / `.bevel-raised`, `.bevel-inset` / `.bevel-sunken`, `.bevel-button`, `.window-outer-chassis`, `.win-checkbox`, `.ruled-paper`, `.cyan-grid-paper`, and animated `.eq-bar`.
+2. **Setup Wizard Authentication (`client/src/pages/LoginPage.jsx`)**:
+   - Redesigned into the complete Windows 98 Setup Wizard v2.5 dialog chassis.
+   - Features CRT scanline left banner, wireframe torus math illustration, SoundBlaster audio level indicator, and beveled inputs.
+   - Retained 100% of Firebase authentication features (`createUserWithEmailAndPassword`, `signInWithEmailAndPassword`, `signInWithPopup`, and instant local demo mode).
+3. **Student Workspace System Explorer (`client/src/pages/DashboardPage.jsx`)**:
+   - Restyled into the classic System Explorer window with cobalt gradient titlebar, live clock, language selector, Start menu flyout, and breadcrumbs.
+   - Bento grid renders physical spiral-bound exercise books (ruled paper and cyan grid) with holographic subject badges.
+   - Added floating bottom Winamp-style audio tutor dock with animated VU equalizer bars.
+4. **Universal Question Slicer Modal (`client/src/components/UploadWorksheetModal.jsx`)**:
+   - Transformed into the flatbed scanner bay aesthetic with green laser scanline animation and TWAIN_32 status inset.
+5. **Print Spooler PDF Export Dialog (`client/src/components/ExportPdfModal.jsx`)**:
+   - Restyled into the Windows 98 Print Spooler dialog with 2-page A4 spread preview and segmented LED progress bar.
+6. **AI Tutor Properties & Voice Config Control Panel (`client/src/components/SettingsControlPanelModal.jsx`)**:
+   - Built a comprehensive Windows 98/2000 property sheet with 4 tabbed panels:
+     - *General*: Syllabus / exam target (CBSE, JEE, Undergrad), primary language, autosave intervals.
+     - *Speech & Voice*: Gnani Prisma STT, Gnani Timbre TTS, segmented LED VU meter, speech rate/pitch sliders, and test audio playback.
+     - *Gatekeeper*: Laya micro-classifier vs local heuristic router, SymPy algebraic verification toggle.
+     - *Inks & Paper*: Paper rule style preview (ruled, cyan grid, plain), student ink tint, AI ghost pen tint, pen stroke width.
+   - Accessible via Start Menu, Dashboard Winamp dock ("Config"), and Notebook Workspace header ("Settings").
+7. **Floating Dock & Notebook Workspace Canvas (`client/src/components/FloatingDock.jsx`, `NotebookPage.jsx`, `NotebookWorkspace.jsx`)**:
+   - Restyled the floating dock into an Apple iMac G3 translucent beveled chassis.
+   - Upgraded notebook paper pages with cyan rule margins, spiral-binder hole punch artifacts, and yellow problem tape headers.
+   - Converted all unescaped arrows in JSX text to unicode `→` for clean compilation.
+
+### Files created
+- `client/src/components/SettingsControlPanelModal.jsx`
+
+### Files modified
+- `client/src/index.css`
+- `client/src/pages/LoginPage.jsx`
+- `client/src/pages/DashboardPage.jsx`
+- `client/src/components/UploadWorksheetModal.jsx`
+- `client/src/components/ExportPdfModal.jsx`
+- `client/src/components/FloatingDock.jsx`
+- `client/src/components/NotebookPage.jsx`
+- `client/src/components/NotebookWorkspace.jsx`
+- `memory.md`
+- `update.md`
+
+
+
+
 
 
 

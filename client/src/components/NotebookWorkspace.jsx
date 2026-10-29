@@ -11,6 +11,7 @@ import NotebookPage from './NotebookPage.jsx';
 import FloatingDock from './FloatingDock.jsx';
 import MarkerActionPopover from './MarkerActionPopover.jsx';
 import ExportPdfModal from './ExportPdfModal.jsx';
+import SettingsControlPanelModal from './SettingsControlPanelModal.jsx';
 
 // ---------------------------------------------------------------------------
 // Language labels
@@ -41,6 +42,7 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
   );
   const [extending, setExtending] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // ---- "✨ Ask Marker" Selection & Popover State -------------------------
   const [selectionState, setSelectionState] = useState(null);
@@ -293,18 +295,20 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
 
   // ---- Language selector ------------------------------------------------
   async function handleLanguageChange(newLang) {
-    const uid = auth.currentUser?.uid;
+    const uid = auth?.currentUser?.uid || 'demo-student';
     if (!uid || !notebookId) return;
-    try {
-      const ts = serverTimestamp();
-      await update(ref(database), {
-        [`notebooks/${uid}/${notebookId}/metadata/preferredLanguage`]: newLang,
-        [`notebooks/${uid}/${notebookId}/metadata/updatedAt`]: ts,
-        [`notebookIndex/${uid}/${notebookId}/preferredLanguage`]: newLang,
-        [`notebookIndex/${uid}/${notebookId}/updatedAt`]: ts,
-      });
-    } catch (err) {
-      console.error('Failed to update language:', err);
+    if (database) {
+      try {
+        const ts = serverTimestamp();
+        await update(ref(database), {
+          [`notebooks/${uid}/${notebookId}/metadata/preferredLanguage`]: newLang,
+          [`notebooks/${uid}/${notebookId}/metadata/updatedAt`]: ts,
+          [`notebookIndex/${uid}/${notebookId}/preferredLanguage`]: newLang,
+          [`notebookIndex/${uid}/${notebookId}/updatedAt`]: ts,
+        });
+      } catch (err) {
+        console.error('Failed to update language:', err);
+      }
     }
   }
 
@@ -315,38 +319,37 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
 
   // ---- Render -----------------------------------------------------------
   return (
-    <div className="flex min-h-screen flex-col bg-[#f3f5fb]">
-      {/* ═══════════════════ Top Bar ═══════════════════════════════════ */}
-      <header className="sticky top-0 z-30 border-b border-white/70 bg-white/55 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+    <div className="flex min-h-screen flex-col bg-desktop-crt font-mono text-[#0F172A] selection:bg-[#00F0FF] selection:text-[#0F172A]">
+      {/* ═══════════════════ Top Retro System Header Bar ═══════════════════════════════════ */}
+      <header className="sticky top-0 z-30 bg-[#D4D0C8] border-b-2 border-[#808080] border-t-2 border-l-2 border-white px-2 py-1 select-none shadow">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2">
           {/* Left — back + title */}
-          <div className="flex min-w-0 items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             <Link
               to="/dashboard"
-              className="shrink-0 rounded-xl px-2 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+              className="bevel-button bg-[#D4D0C8] text-[#000080] px-2.5 py-0.5 text-xs font-bold hover:bg-slate-200"
             >
-              ← Back
+              ← Back to C:\
             </Link>
-            <h1 className="truncate text-sm font-semibold text-slate-800 sm:text-base">
-              {metadata.title || 'Untitled Notebook'}
-            </h1>
+            <span className="text-xs font-bold text-[#0F172A] truncate drop-shadow-[0.5px_0.5px_0px_#FFFFFF]">
+              {metadata.title || 'Untitled Math Problem'}
+            </span>
           </div>
 
           {/* Right — language, mic, export */}
           <div className="flex shrink-0 items-center gap-2">
             {/* Language pills */}
-            <div className="hidden items-center gap-0.5 rounded-xl border border-slate-200 bg-white/80 p-0.5 sm:flex">
+            <div className="hidden sm:flex items-center bevel-inset bg-[#D4D0C8] p-0.5">
               {PREFERRED_LANGUAGES.map((lang) => (
                 <button
                   key={lang}
                   type="button"
                   onClick={() => handleLanguageChange(lang)}
-                  className={[
-                    'rounded-lg px-2.5 py-1 text-[11px] font-medium transition',
+                  className={`px-1.5 py-0.5 text-[10px] font-bold ${
                     currentLang === lang
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700',
-                  ].join(' ')}
+                      ? 'bg-[#000080] text-white'
+                      : 'text-[#0F172A] hover:bg-slate-300'
+                  }`}
                 >
                   {LANGUAGE_LABELS[lang] || lang}
                 </button>
@@ -358,36 +361,26 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
               type="button"
               onClick={isListening ? stopListening : startListening}
               title={isListening ? 'Click to disable hands-free voice' : 'Click to enable hands-free voice'}
-              className={[
-                'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition active:scale-95',
-                isListening
-                  ? gatekeeperState === 'evaluating'
-                    ? 'border-amber-300 bg-amber-50 text-amber-800 shadow-2xs'
-                    : gatekeeperState === 'summoned'
-                      ? 'border-indigo-400 bg-indigo-50 text-indigo-700 shadow-2xs'
-                      : 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-2xs'
-                  : 'border-slate-200 bg-white/80 text-slate-500 hover:border-slate-300 hover:text-slate-700',
-              ].join(' ')}
+              className="bevel-button bg-[#D4D0C8] px-2.5 py-0.5 text-[11px] font-bold flex items-center gap-1.5 hover:bg-slate-200"
             >
               <span
-                className={[
-                  'h-2 w-2 rounded-full',
+                className={`h-2 w-2 rounded-none border border-black ${
                   isListening
                     ? gatekeeperState === 'evaluating'
-                      ? 'bg-amber-500 animate-ping'
-                      : 'bg-emerald-500 animate-pulse'
-                    : 'bg-slate-300',
-                ].join(' ')}
+                      ? 'bg-amber-400 animate-ping'
+                      : 'bg-[#39FF14] animate-pulse'
+                    : 'bg-slate-400'
+                }`}
               />
               <span className="hidden sm:inline">
                 {isListening
                   ? gatekeeperState === 'evaluating'
-                    ? 'Jev evaluating...'
+                    ? 'Laya evaluating...'
                     : gatekeeperState === 'summoned'
                       ? 'Summoned!'
                       : gatekeeperState === 'ignored'
                         ? 'Thinking aloud'
-                        : 'Voice on'
+                        : 'Voice on (Prisma)'
                   : 'Voice off'}
               </span>
               <span className="sm:hidden">{isListening ? '🎙️' : '🔇'}</span>
@@ -397,9 +390,21 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
             <button
               type="button"
               onClick={() => setIsExportModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-700 active:scale-95"
+              className="bevel-button bg-[#00F0FF] text-[#00363a] px-3 py-0.5 text-xs font-black bevel-button-pressed border hover:brightness-105 flex items-center gap-1"
             >
-              <span>📄 Export PDF</span>
+              <span>🖨️</span>
+              <span>Export PDF</span>
+            </button>
+
+            {/* AI Tutor & Voice Settings */}
+            <button
+              type="button"
+              onClick={() => setIsSettingsModalOpen(true)}
+              className="bevel-button bg-[#D4D0C8] text-[#0F172A] px-2 py-0.5 text-xs font-bold hover:bg-slate-200 flex items-center gap-1"
+              title="Configure Voice, AI Model, and Inks"
+            >
+              <span>⚙️</span>
+              <span className="hidden md:inline">Settings</span>
             </button>
           </div>
         </div>
@@ -407,10 +412,10 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
 
       {/* ── Realtime Claire Tutor Status Banner ─────────────────────── */}
       {tutorStatus && (
-        <div className="sticky top-[57px] z-25 border-b border-indigo-100 bg-indigo-50/90 px-4 py-2 text-center backdrop-blur-md">
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-indigo-900">
-            <span className="h-2 w-2 animate-ping rounded-full bg-indigo-600" />
-            <span>{tutorStatus.message || 'Claire is solving...'}</span>
+        <div className="sticky top-[38px] z-25 bg-[#0d0e15] border-b-2 border-[#00F0FF] px-4 py-1.5 text-center shadow-lg">
+          <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#00F0FF] font-mono">
+            <span className="h-2 w-2 animate-ping bg-[#39FF14]" />
+            <span>[AI_SOLVER_ENGINE]: {tutorStatus.message || 'Claire is solving...'}</span>
           </div>
         </div>
       )}
@@ -473,21 +478,13 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
 
       {/* ═══════════════════ [⏸ Ask Why] Interruption Modal ═══════════ */}
       {askWhyModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-2xl border border-white/80 bg-white/95 p-5 shadow-2xl backdrop-blur-xl">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-500 text-sm font-bold text-white shadow-xs">
-                  💡
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    Question on Step {askWhyModal.step?.step_number || ''}
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Paused Claire's Ghost Pen solution
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs select-none">
+          <div className="w-full max-w-md bg-[#D4D0C8] window-outer-chassis p-1 shadow-2xl">
+            {/* Titlebar */}
+            <div className="h-7 bg-gradient-to-r from-[#000080] via-[#09419b] to-[#1084D0] px-2 flex items-center justify-between text-white">
+              <div className="flex items-center gap-1.5 font-bold text-xs">
+                <span>💡</span>
+                <span>Question on Step {askWhyModal.step?.step_number || ''} [Paused Solution]</span>
               </div>
               <button
                 type="button"
@@ -495,77 +492,79 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
                   setAskWhyModal(null);
                   useStepPlaybackQueue.getState().resumePlayback();
                 }}
-                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                className="bevel-button bg-[#D4D0C8] text-red-700 w-4 h-4 flex items-center justify-center font-bold text-[10px]"
               >
                 ✕
               </button>
             </div>
 
-            <div className="my-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3">
-              <span className="text-[11px] font-semibold text-indigo-900">
-                Formula at this step:
-              </span>
-              <p className="mt-1 font-mono text-xs text-indigo-800 line-clamp-2">
-                {askWhyModal.step?.canvas_latex || 'Derivation step'}
-              </p>
-              {askWhyModal.step?.margin_note && (
-                <p className="mt-1 text-[11px] font-medium text-amber-700 font-['Caveat',cursive]">
-                  ✎ {askWhyModal.step.margin_note}
+            <div className="p-3 bg-[#D4D0C8] space-y-2.5 text-xs text-[#0F172A]">
+              <div className="bevel-inset bg-[#0d0e15] p-2.5 text-[#00F0FF]">
+                <span className="text-[10px] text-slate-400 font-bold block mb-1">
+                  &gt; FORMULA AT CURRENT STEP:
+                </span>
+                <p className="font-mono text-xs text-[#00F0FF] line-clamp-2">
+                  {askWhyModal.step?.canvas_latex || 'Derivation step'}
                 </p>
-              )}
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (askWhyQuestion.trim()) {
-                  window.dispatchEvent(
-                    new CustomEvent('claire:summon', {
-                      detail: {
-                        action: 'hint',
-                        query: `Clarify step ${askWhyModal.step?.step_number}: ${askWhyQuestion}`,
-                        pageId: askWhyModal.pageId,
-                        notebookId: askWhyModal.notebookId,
-                        preferredLanguage: currentLang,
-                      },
-                    }),
-                  );
-                }
-                setAskWhyModal(null);
-              }}
-              className="mt-3"
-            >
-              <label className="block text-[11px] font-semibold text-slate-700">
-                What would you like Claire to explain?
-              </label>
-              <input
-                type="text"
-                autoFocus
-                value={askWhyQuestion}
-                onChange={(e) => setAskWhyQuestion(e.target.value)}
-                placeholder="e.g. Why did we integrate by parts here?"
-                className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:border-indigo-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-100"
-              />
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAskWhyModal(null);
-                    useStepPlaybackQueue.getState().resumePlayback();
-                  }}
-                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-600 transition hover:bg-slate-50"
-                >
-                  ▶ Resume Solution
-                </button>
-                <button
-                  type="submit"
-                  disabled={!askWhyQuestion.trim()}
-                  className="rounded-xl bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white shadow-xs transition hover:bg-indigo-700 disabled:opacity-50"
-                >
-                  Ask Claire
-                </button>
+                {askWhyModal.step?.margin_note && (
+                  <p className="mt-1 text-xs font-bold text-[#FF2E93] font-['Caveat',cursive]">
+                    ✎ {askWhyModal.step.margin_note}
+                  </p>
+                )}
               </div>
-            </form>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (askWhyQuestion.trim()) {
+                    window.dispatchEvent(
+                      new CustomEvent('claire:summon', {
+                        detail: {
+                          action: 'hint',
+                          query: `Clarify step ${askWhyModal.step?.step_number}: ${askWhyQuestion}`,
+                          pageId: askWhyModal.pageId,
+                          notebookId: askWhyModal.notebookId,
+                          preferredLanguage: currentLang,
+                        },
+                      }),
+                    );
+                  }
+                  setAskWhyModal(null);
+                }}
+                className="space-y-2"
+              >
+                <label className="block text-xs font-bold">
+                  What would you like Claire to explain?
+                </label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={askWhyQuestion}
+                  onChange={(e) => setAskWhyQuestion(e.target.value)}
+                  placeholder="e.g. Why did we integrate by parts here?"
+                  className="w-full bg-white text-[#0F172A] px-2.5 py-1.5 bevel-sunken-field focus:outline-none focus:ring-1 focus:ring-[#00F0FF] text-xs font-mono"
+                />
+                <div className="pt-2 border-t border-[#808080] flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAskWhyModal(null);
+                      useStepPlaybackQueue.getState().resumePlayback();
+                    }}
+                    className="bevel-button bg-[#D4D0C8] px-3 py-1 font-bold text-xs hover:bg-slate-200"
+                  >
+                    ▶ Resume Solution
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!askWhyQuestion.trim()}
+                    className="bevel-button bg-[#00F0FF] text-[#00363a] px-3 py-1 font-black text-xs bevel-button-pressed border hover:brightness-105 disabled:opacity-50"
+                  >
+                    Ask Claire →
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -577,6 +576,12 @@ export default function NotebookWorkspace({ notebook, notebookId }) {
         pageElements={Array.from(
           pagesContainerRef.current?.querySelectorAll('[data-notebook-page]') || [],
         )}
+      />
+
+      {/* ═══════════════════ AI Tutor & Voice Settings Modal ══════════ */}
+      <SettingsControlPanelModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
       />
     </div>
   );
