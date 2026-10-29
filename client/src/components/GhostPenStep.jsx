@@ -59,7 +59,7 @@ export default function GhostPenStep({
       return;
     }
 
-    // Estimate reveal duration based on equation & speech length (~2.5s to 4.5s)
+    // Estimate reveal duration based on equation & speech length (~2.4s to 4.5s)
     const equationLength = (step.canvas_latex || '').length;
     const durationMs = Math.max(2400, Math.min(2000 + equationLength * 35, 5000));
 
@@ -93,7 +93,7 @@ export default function GhostPenStep({
     };
   }, [completeStepWriting, isActive, isPaused, status, step.canvas_latex, step.step_number]);
 
-  // If pending, hide or render as subtle placeholder
+  // If pending, hide
   if (status === 'pending') {
     return null;
   }
@@ -104,22 +104,33 @@ export default function GhostPenStep({
   return (
     <div
       data-ghost-pen-step={step.step_number}
-      className={`group relative my-2.5 rounded-xl border border-indigo-100/60 bg-gradient-to-r from-indigo-50/20 via-white to-transparent p-3 transition-all ${
-        isActive ? 'ring-1 ring-indigo-300 shadow-xs' : ''
-      }`}
+      className="group relative w-full flex items-start my-1 text-left select-text"
+      style={{ minHeight: '32px' }}
     >
-      {/* ── Main Equation & Margin Note Row ────────────────────────── */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        {/* Left: Step number badge + animated equation */}
-        <div className="flex flex-1 items-start gap-3 min-w-0">
-          <span className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-[11px] font-bold text-white shadow-xs">
-            {step.step_number}
-          </span>
+      {/* ── Left Margin Column (Left of 72px red margin rule) ────────── */}
+      <div className="w-[72px] shrink-0 pr-3.5 text-right select-none pt-0.5">
+        <span
+          className="handwriting-ink-ai text-xl font-bold inline-block"
+          title={`Step ${step.step_number}`}
+        >
+          ({step.step_number})
+        </span>
 
-          <div className="relative flex-1 min-w-0 overflow-hidden">
-            {/* KaTeX Math Equation with Left-to-Right Reveal Mask */}
+        {/* Subtle active pulse in margin */}
+        {isActive && (
+          <span className="block text-[10px] font-mono font-bold text-[#FF2E93] leading-none animate-pulse">
+            • AI
+          </span>
+        )}
+      </div>
+
+      {/* ── Ruled Main Body (Directly on the 32px blue lines) ───────── */}
+      <div className="flex-1 min-w-0 pl-3">
+        <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-x-4 gap-y-1">
+          {/* Main Math Derivation Line */}
+          <div className="relative flex-1 min-w-0 notebook-math-row text-[#1e40af]">
             <div
-              className="text-left font-serif text-base text-indigo-900 transition-all sm:text-lg"
+              className="transition-all duration-75 text-left"
               style={{
                 clipPath: isWriting
                   ? `polygon(0 0, ${revealProgress}% 0, ${revealProgress}% 100%, 0 100%)`
@@ -128,76 +139,70 @@ export default function GhostPenStep({
               dangerouslySetInnerHTML={{ __html: katexHtml }}
             />
 
-            {/* Glowing Ghost Pen nib cursor tracking the reveal edge */}
+            {/* Glowing Ghost Pen nib cursor tracking the ink reveal edge */}
             {isWriting && revealProgress > 0 && revealProgress < 100 && (
               <div
-                className="pointer-events-none absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-75"
+                className="pointer-events-none absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-20"
                 style={{ left: `${revealProgress}%` }}
               >
-                <div className="flex items-center gap-1 rounded-full bg-indigo-600 px-1.5 py-0.5 text-[9px] font-bold text-white shadow-md shadow-indigo-300">
-                  <span className="h-1.5 w-1.5 animate-ping rounded-full bg-amber-300" />
-                  <span className="text-[10px]">✍️</span>
+                <div className="flex items-center gap-1 -translate-y-3">
+                  <span className="text-base filter drop-shadow">✍️</span>
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#39FF14] animate-ping" />
                 </div>
               </div>
             )}
           </div>
+
+          {/* Right Margin Note (Teacher handwriting annotation) */}
+          {step.margin_note && (
+            <div className="shrink-0 sm:self-center select-none" data-margin-note>
+              <span className="handwriting-margin-note font-bold whitespace-nowrap">
+                ✎ {step.margin_note}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Right: Handwritten Margin Note */}
-        {step.margin_note && (
-          <div className="shrink-0 self-end sm:self-start">
-            <span
-              className="inline-block -rotate-1 rounded-md border border-amber-200/80 bg-amber-50/70 px-2 py-0.5 font-['Caveat',cursive] text-sm font-semibold tracking-wide text-amber-900 shadow-2xs sm:text-base"
-              style={{ fontFamily: "'Caveat', cursive" }}
-            >
-              ✎ {step.margin_note}
-            </span>
+        {/* ── Active Interruption Button (Ask Claire Why) ─────────────── */}
+        {isActive && (
+          <div className="my-1 flex items-center justify-between border-t border-blue-200/50 pt-1 select-none">
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#000080]">
+              <span className="h-2 w-2 rounded-full bg-[#1084D0] animate-ping" />
+              <span>{isPaused ? 'Paused for student question' : 'Claire is writing solution...'}</span>
+            </div>
+
+            <div>
+              {isPaused ? (
+                <button
+                  type="button"
+                  onClick={resumePlayback}
+                  className="bevel-button bg-[#D4D0C8] px-2 py-0.5 text-xs font-bold text-[#000080] hover:bg-slate-200"
+                >
+                  ▶ Resume Writing
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => interruptAndAskWhy(step)}
+                  className="bevel-button bg-[#FFFBEB] px-2 py-0.5 text-xs font-bold text-[#b45309] hover:bg-yellow-100 flex items-center gap-1 border border-amber-300"
+                >
+                  <span>⏸ Ask Why</span>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Optional Spawner: Interactive Mafs 2D Graph ───────────── */}
+        {showGraph && (
+          <div className="my-2 border-l-2 border-indigo-400 pl-3 bg-white/50 backdrop-blur-xs py-1">
+            <InlineNotebookGraph
+              graphAction={step.graph_action}
+              stepNumber={step.step_number}
+            />
           </div>
         )}
       </div>
-
-      {/* ── Floating [⏸ Pause / Ask Why] Interrupt Chip ─────────────── */}
-      {isActive && (
-        <div className="mt-2 flex items-center justify-between border-t border-indigo-100/60 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[11px] font-medium text-slate-500">
-              {isPaused ? 'Paused for student' : 'Claire is explaining step...'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {isPaused ? (
-              <button
-                type="button"
-                onClick={resumePlayback}
-                className="flex items-center gap-1 rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700 shadow-2xs transition hover:bg-indigo-100 active:scale-95"
-              >
-                <span>▶ Resume</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => interruptAndAskWhy(step)}
-                className="flex items-center gap-1 rounded-full border border-amber-300 bg-gradient-to-r from-amber-50 to-orange-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 shadow-2xs transition hover:border-amber-400 hover:shadow-xs active:scale-95"
-              >
-                <span>⏸ Pause / Ask Why</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Optional Spawner: Interactive Mafs 2D Graph ─────────────── */}
-      {showGraph && (
-        <div className="mt-2.5">
-          <InlineNotebookGraph
-            graphAction={step.graph_action}
-            stepNumber={step.step_number}
-          />
-        </div>
-      )}
     </div>
   );
 }
-

@@ -1,12 +1,13 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ReactSketchCanvas } from 'react-sketch-canvas';
 import { useNotebookStore } from '../store/useNotebookStore.js';
 import { computeHeaderBoundingBox, computeStrokeBoundingBox } from '../lib/boundingBox.js';
 import GhostPenStep from './GhostPenStep.jsx';
+import StudentHandwritingLine from './StudentHandwritingLine.jsx';
 import { useStepPlaybackQueue } from '../store/useStepPlaybackQueue.js';
 
 // ---------------------------------------------------------------------------
-// Paper background CSS patterns
+// Paper background CSS patterns (Real Physical Notebook Alignment)
 // ---------------------------------------------------------------------------
 
 const PAPER_BACKGROUNDS = {
@@ -15,13 +16,18 @@ const PAPER_BACKGROUNDS = {
     backgroundImage: [
       'linear-gradient(rgba(0, 240, 255, 0.25) 1px, transparent 1px)',
       'linear-gradient(90deg, rgba(0, 240, 255, 0.25) 1px, transparent 1px)',
+      'linear-gradient(90deg, transparent 71px, rgba(244, 63, 94, 0.5) 71px, rgba(244, 63, 94, 0.5) 73px, transparent 73px)',
     ].join(', '),
-    backgroundSize: '24px 24px',
+    backgroundSize: '24px 24px, 24px 24px, 100% 100%',
   },
   ruled: {
     backgroundColor: '#FDFDFE',
-    backgroundImage:
-      'repeating-linear-gradient(transparent, transparent 27px, #b9d5f0 27px, #b9d5f0 28px)',
+    backgroundImage: [
+      'linear-gradient(#b9d5f0 1px, transparent 1px)',
+      'linear-gradient(90deg, transparent 71px, rgba(244, 63, 94, 0.5) 71px, rgba(244, 63, 94, 0.5) 73px, transparent 73px)',
+    ].join(', '),
+    backgroundSize: '100% 32px, 100% 100%',
+    lineHeight: '32px',
   },
   blank: {
     backgroundColor: '#FDFDFE',
@@ -52,9 +58,92 @@ const NotebookPage = forwardRef(function NotebookPage(
   const headerRef = useRef(null);
   const canvasContainerRef = useRef(null);
   const canvasRef = useRef(null);
-  const saveTimerRef = useRef(null);
+  const strokeSaveTimerRef = useRef(null);
+  const lineSaveTimerRef = useRef(null);
   const initialLoadDone = useRef(false);
+
   const savePageStrokes = useNotebookStore((s) => s.savePageStrokes);
+  const savePageStudentLines = useNotebookStore((s) => s.savePageStudentLines);
+
+  // ---- Student Handwritten Lines State ---------------------------------
+  const [studentLines, setStudentLines] = useState(() => page.studentLines || []);
+  const [editingLineId, setEditingLineId] = useState(null);
+
+  useEffect(() => {
+    if (Array.isArray(page.studentLines)) {
+      setStudentLines(page.studentLines);
+    }
+  }, [page.studentLines]);
+
+  const triggerSaveStudentLines = useCallback(
+    (newLines) => {
+      if (lineSaveTimerRef.current) clearTimeout(lineSaveTimerRef.current);
+      lineSaveTimerRef.current = setTimeout(async () => {
+        try {
+          await savePageStudentLines(notebookId, pageId, newLines);
+        } catch (err) {
+          console.error(`[auto-save student lines ${pageId}]`, err);
+        }
+      }, 600);
+    },
+    [notebookId, pageId, savePageStudentLines],
+  );
+
+  function handleUpdateLineText(idx, newText) {
+    setStudentLines((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], text: newText };
+      triggerSaveStudentLines(next);
+      return next;
+    });
+  }
+
+  function handleUpdateLineMargin(idx, newMargin) {
+    setStudentLines((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], marginLabel: newMargin };
+      triggerSaveStudentLines(next);
+      return next;
+    });
+  }
+
+  function handleAddLineAfter(idx) {
+    const newLineId = `line_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const newLine = { id: newLineId, text: '', marginLabel: '' };
+    setStudentLines((prev) => {
+      const next = [...prev];
+      next.splice(idx + 1, 0, newLine);
+      triggerSaveStudentLines(next);
+      return next;
+    });
+    setEditingLineId(newLineId);
+  }
+
+  function handleDeleteLine(idx) {
+    setStudentLines((prev) => {
+      if (prev.length <= 1) {
+        const cleared = [{ id: prev[0]?.id || 'line_0', text: '', marginLabel: '' }];
+        triggerSaveStudentLines(cleared);
+        return cleared;
+      }
+      const prevLineId = idx > 0 ? prev[idx - 1]?.id : null;
+      const next = prev.filter((_, i) => i !== idx);
+      triggerSaveStudentLines(next);
+      if (prevLineId) setEditingLineId(prevLineId);
+      return next;
+    });
+  }
+
+  function handleAddNewLine() {
+    const newLineId = `line_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const newLine = { id: newLineId, text: '', marginLabel: '' };
+    setStudentLines((prev) => {
+      const next = [...prev, newLine];
+      triggerSaveStudentLines(next);
+      return next;
+    });
+    setEditingLineId(newLineId);
+  }
 
   // ---- Expose imperative methods to workspace --------------------------
   useImperativeHandle(ref, () => ({
@@ -94,7 +183,6 @@ const NotebookPage = forwardRef(function NotebookPage(
         const paths = await canvasRef.current?.exportPaths();
         if (paths && paths.length > 0) {
           const latestPath = paths[paths.length - 1];
-          // Remove the temporary highlighter stroke so canvas stays clean
           await canvasRef.current?.undo();
 
           const container = canvasContainerRef.current;
@@ -110,15 +198,14 @@ const NotebookPage = forwardRef(function NotebookPage(
 
           if (box && container) {
             const containerRect = container.getBoundingClientRect();
-            // Calculate screen position for the popover
             const screenPosition = {
               top: Math.min(
                 window.innerHeight - 320,
-                Math.max(70, containerRect.top + box.minY - 10)
+                Math.max(70, containerRect.top + box.minY - 10),
               ),
               left: Math.min(
                 window.innerWidth - 380,
-                Math.max(20, containerRect.left + box.maxX + 14)
+                Math.max(20, containerRect.left + box.maxX + 14),
               ),
             };
 
@@ -136,8 +223,8 @@ const NotebookPage = forwardRef(function NotebookPage(
     }
 
     // Debounced ink auto-save for regular pen and eraser strokes
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
+    if (strokeSaveTimerRef.current) clearTimeout(strokeSaveTimerRef.current);
+    strokeSaveTimerRef.current = setTimeout(async () => {
       try {
         const paths = await canvasRef.current?.exportPaths();
         if (paths) await savePageStrokes(notebookId, pageId, paths);
@@ -147,10 +234,10 @@ const NotebookPage = forwardRef(function NotebookPage(
     }, 800);
   }, [activeTool, notebookId, onMarkerSelection, pageId, savePageStrokes]);
 
-  // Clean up timer on unmount
   useEffect(
     () => () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      if (strokeSaveTimerRef.current) clearTimeout(strokeSaveTimerRef.current);
+      if (lineSaveTimerRef.current) clearTimeout(lineSaveTimerRef.current);
     },
     [],
   );
@@ -179,7 +266,7 @@ const NotebookPage = forwardRef(function NotebookPage(
   }
 
   // ---- Derived drawing properties --------------------------------------
-  const paperBg = PAPER_BACKGROUNDS[paperStyle] || PAPER_BACKGROUNDS.grid;
+  const paperBg = PAPER_BACKGROUNDS[paperStyle] || PAPER_BACKGROUNDS.ruled;
   const effectiveColor =
     activeTool === 'marker' ? 'rgba(251, 191, 36, 0.40)' : strokeColor;
   const effectiveWidth = activeTool === 'marker' ? 24 : strokeWidth;
@@ -211,7 +298,7 @@ const NotebookPage = forwardRef(function NotebookPage(
       data-page-id={pageId}
       onClick={() => onFocus?.(pageId)}
       className={[
-        'relative mx-auto flex w-full max-w-[820px] flex-col overflow-y-auto bg-white window-outer-chassis shadow-2xl transition-all select-none border-l-[8px] border-l-[#FF2E93]',
+        'relative mx-auto flex w-full max-w-[840px] flex-col overflow-y-auto bg-white window-outer-chassis shadow-2xl transition-all select-none border-l-[8px] border-l-[#FF2E93]',
         isActive
           ? 'ring-2 ring-[#00F0FF]'
           : 'opacity-95',
@@ -263,13 +350,19 @@ const NotebookPage = forwardRef(function NotebookPage(
         </div>
       )}
 
-      {/* ── Drawing Canvas & Ghost Pen Layer ───────────────────────── */}
+      {/* ── Ruled Writing & Drawing Surface ───────────────────────── */}
       <div
         ref={canvasContainerRef}
         data-canvas-container
-        className="relative min-h-[750px] flex-1"
+        className="relative min-h-[750px] flex-1 overflow-visible"
+        style={paperBg}
       >
-        <div className="absolute inset-0" style={paperBg}>
+        {/* Layer 0: Freehand Drawing Canvas (ReactSketchCanvas) */}
+        <div
+          className={`absolute inset-0 z-0 ${
+            activeTool === 'write' ? 'pointer-events-none' : 'pointer-events-auto'
+          }`}
+        >
           <ReactSketchCanvas
             ref={canvasRef}
             width="100%"
@@ -284,43 +377,72 @@ const NotebookPage = forwardRef(function NotebookPage(
           />
         </div>
 
-        {/* ── Ghost Pen Step Layer ─────────────────────────────────── */}
-        {stepsToRender.length > 0 && (
-          <div className="pointer-events-none relative z-10 mx-auto w-full max-w-[92%] px-3 pt-3 pb-12">
-            {mistakeNote && (
-              <div className="pointer-events-auto mb-3 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50/95 p-3 text-xs text-amber-900 shadow-xs backdrop-blur-sm">
-                <span className="text-base leading-none">🔍</span>
-                <div>
-                  <span className="font-bold text-amber-950">Claire's Observation: </span>
-                  <span>{mistakeNote}</span>
-                </div>
+        {/* Layer 1: Structured Handwritten Lines (Student Lines + AI Solution Steps) */}
+        <div className="relative z-10 w-full pt-1 pb-16">
+          {/* Observation Note (if mistake detected) */}
+          {mistakeNote && (
+            <div className="ml-[76px] mr-4 mb-2 flex items-start gap-2 border-l-4 border-amber-400 bg-amber-50/90 p-2 text-xs font-mono text-amber-900 shadow-xs backdrop-blur-xs select-none">
+              <span className="text-base leading-none">🔍</span>
+              <div>
+                <span className="font-bold">Claire's Observation: </span>
+                <span className="font-sans font-medium">{mistakeNote}</span>
               </div>
-            )}
-            {stepsToRender.map((stepItem, idx) => {
-              const num = stepItem.step_number || idx + 1;
-              const stepStatus = isCurrentPageQueue
-                ? stepStatusMap[num] ||
-                  (idx < currentStepIndex
-                    ? 'completed'
-                    : idx === currentStepIndex
-                      ? 'writing'
-                      : 'pending')
-                : 'completed';
-              const isStepActive =
-                isCurrentPageQueue && idx === currentStepIndex && isWritingStep;
+            </div>
+          )}
 
-              return (
-                <div key={`ghost-step-${num}-${idx}`} className="pointer-events-auto">
-                  <GhostPenStep
-                    step={stepItem}
-                    status={stepStatus}
-                    isActive={isStepActive}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
+          {/* Student Handwritten Lines */}
+          {studentLines.map((line, idx) => (
+            <StudentHandwritingLine
+              key={line.id || `student-line-${idx}`}
+              line={line}
+              isEditing={editingLineId === (line.id || `student-line-${idx}`)}
+              onStartEdit={() => setEditingLineId(line.id || `student-line-${idx}`)}
+              onChangeText={(txt) => handleUpdateLineText(idx, txt)}
+              onChangeMargin={(lbl) => handleUpdateLineMargin(idx, lbl)}
+              onEnter={() => handleAddLineAfter(idx)}
+              onBackspaceEmpty={() => handleDeleteLine(idx)}
+              onBlur={() => setEditingLineId(null)}
+              isWriteToolActive={activeTool === 'write'}
+            />
+          ))}
+
+          {/* Quick Line Adder when in Write tool mode */}
+          {activeTool === 'write' && (
+            <div className="w-full flex items-center my-0 select-none pl-[76px]">
+              <button
+                type="button"
+                onClick={handleAddNewLine}
+                className="text-left handwriting-ink-student text-xl text-slate-400 hover:text-[#000080] py-0.5 cursor-pointer transition-colors"
+              >
+                ✎ + Click to write next line...
+              </button>
+            </div>
+          )}
+
+          {/* AI Ghost Pen Derivation Steps */}
+          {stepsToRender.map((stepItem, idx) => {
+            const num = stepItem.step_number || idx + 1;
+            const stepStatus = isCurrentPageQueue
+              ? stepStatusMap[num] ||
+                (idx < currentStepIndex
+                  ? 'completed'
+                  : idx === currentStepIndex
+                    ? 'writing'
+                    : 'pending')
+              : 'completed';
+            const isStepActive =
+              isCurrentPageQueue && idx === currentStepIndex && isWritingStep;
+
+            return (
+              <GhostPenStep
+                key={`ghost-step-${num}-${idx}`}
+                step={stepItem}
+                status={stepStatus}
+                isActive={isStepActive}
+              />
+            );
+          })}
+        </div>
 
         {/* ── Shimmer Selection Box (Canvas region) ────────────────── */}
         {selectionBox && !selectionBox.isHeader && (

@@ -1,13 +1,19 @@
 const TOOLS = [
   {
     id: 'pen',
-    label: 'Pen',
+    label: '✎ Draw',
     icon: '✎',
     activeClass: 'bevel-inset bg-[#000080] text-white',
   },
   {
+    id: 'write',
+    label: '✍️ Write',
+    icon: '✍️',
+    activeClass: 'bevel-inset bg-[#000080] text-[#00F0FF] font-bold',
+  },
+  {
     id: 'eraser',
-    label: 'Eraser',
+    label: '⌫ Eraser',
     icon: '⌫',
     activeClass: 'bevel-inset bg-red-800 text-white',
   },

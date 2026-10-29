@@ -144,12 +144,14 @@ a {
   transform: translateY(-1px);
 }
 
-/* Ruled & Grid Paper Patterns */
+/* Ruled & Grid Paper Patterns (Human Exercise Notebook Baseline) */
 .ruled-paper {
   background-color: #FDFDFE;
-  background-image: linear-gradient(#b9d5f0 1px, transparent 1px);
-  background-size: 100% 28px;
-  line-height: 28px;
+  background-image: 
+    linear-gradient(#b9d5f0 1px, transparent 1px),
+    linear-gradient(90deg, transparent 71px, rgba(244, 63, 94, 0.5) 71px, rgba(244, 63, 94, 0.5) 73px, transparent 73px);
+  background-size: 100% 32px, 100% 100%;
+  line-height: 32px;
 }
 
 .cyan-grid-paper {
@@ -157,7 +159,45 @@ a {
   background-image: 
     linear-gradient(rgba(0, 240, 255, 0.25) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 240, 255, 0.25) 1px, transparent 1px);
-  background-size: 20px 20px;
+  background-size: 24px 24px;
+}
+
+/* Authentic Human Handwriting & Ink Styles */
+.handwriting-ink-student {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 23px;
+  line-height: 32px;
+  color: #0F172A;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 0.5px rgba(15, 23, 42, 0.35);
+}
+
+.handwriting-ink-ai {
+  font-family: 'Caveat', 'Kalam', cursive;
+  font-size: 23px;
+  line-height: 32px;
+  color: #1e40af;
+  letter-spacing: 0.01em;
+  text-shadow: 0 0 0.5px rgba(30, 64, 175, 0.35);
+}
+
+.handwriting-margin-note {
+  font-family: 'Caveat', cursive;
+  font-size: 20px;
+  line-height: 32px;
+  color: #e11d48;
+  letter-spacing: 0.01em;
+}
+
+/* Notebook Equation Baseline Lock (Locks KaTeX to the 32px Paper Line) */
+.notebook-math-row .katex-display {
+  margin: 0 !important;
+  text-align: left !important;
+}
+
+.notebook-math-row .katex {
+  font-size: 1.15em;
+  color: inherit;
 }
 
 /* Audio Equalizer Pulsing Animation */

@@ -223,6 +223,30 @@
 - `memory.md`
 - `update.md`
 
+---
+
+## 2026-10-29 — STEP 11: Real Physical Notebook Baseline Alignment & Human Handwriting Ink System
+
+### What was done
+1. **Physical Exercise Book Geometry (`client/src/index.css`, `client/src/components/NotebookPage.jsx`)**:
+   - Upgraded ruled paper background to authentic 32px horizontal cyan-blue lines (`#b9d5f0`) combined with a classic 72px left vertical red margin line (`rgba(244, 63, 94, 0.5)`).
+   - Added classes `.handwriting-ink-student` (`#0F172A`), `.handwriting-ink-ai` (`#1e40af`), and `.handwriting-margin-note` (`#e11d48`) with `Caveat` and `Kalam` typography.
+   - Locked KaTeX display math baselines to the 32px paper lines (`.notebook-math-row .katex-display`).
+2. **Student Handwritten Line Editor (`client/src/components/StudentHandwritingLine.jsx`, `client/src/store/useNotebookStore.js`)**:
+   - Created `StudentHandwritingLine` component allowing students to type math and text directly on the 32px ruled lines.
+   - Text automatically renders in realistic cursive student ink (`Caveat` / `Kalam`) and parses inline `$math$` via KaTeX.
+   - Keyboard navigation: `Enter` drops to the next 32px line; `Backspace` on empty line deletes it and returns focus to previous.
+   - Added `savePageStudentLines` to `useNotebookStore` with debounced auto-saving and Firebase synchronization.
+3. **Ghost Pen Physical Ink Inscription (`client/src/components/GhostPenStep.jsx`)**:
+   - Completely stripped artificial card boxes, borders, gradient backgrounds, and shadows from AI solution steps.
+   - Inscribes steps directly onto the ruled lines:
+     - Step number `(1)` in the 72px left margin column in educator blue ink.
+     - Mathematical derivation equations and explanations flush on 32px ruled lines with animated left-to-right ink reveal and glowing pen nib cursor `✍️`.
+     - Teacher annotations written in red margin ink (`#e11d48`).
+4. **Dock & Export Integration (`client/src/components/FloatingDock.jsx`, `client/src/utils/exportNotebookToPdf.js`)**:
+   - Added `✍️ Write` tool to the floating dock alongside `✎ Draw`, `⌫ Eraser`, and `✨ Ask Marker`.
+   - Updated PDF exporter so clean submission mode preserves human student handwriting while hiding coaching chips and buttons.
+
 
 
 

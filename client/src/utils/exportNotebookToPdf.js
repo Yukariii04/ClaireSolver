@@ -30,17 +30,17 @@ function injectExportStyles({ preset, paperBackground }) {
   if (preset === 'submission') {
     css += `
       /* Clean Submission: Hide margin notes and tutor coaching chips */
-      [data-notebook-page] .font-\\['Caveat'\\,cursive\\],
-      [data-notebook-page] [style*="Caveat"],
       [data-notebook-page] [data-margin-note],
-      [data-notebook-page] .border-amber-300.bg-amber-50\\/95,
-      [data-notebook-page] button {
+      [data-notebook-page] .handwriting-margin-note,
+      [data-notebook-page] button,
+      [data-notebook-page] input {
         display: none !important;
       }
 
       /* Unify Ghost Pen AI ink with student's dark blue-black pen */
       [data-notebook-page] [data-ghost-pen-step] .katex,
-      [data-notebook-page] [data-ghost-pen-step] [class*="text-indigo"] {
+      [data-notebook-page] [data-ghost-pen-step] [class*="text-indigo"],
+      [data-notebook-page] .handwriting-ink-ai {
         color: #1a1a2e !important;
       }
       [data-notebook-page] [data-ghost-pen-step] {

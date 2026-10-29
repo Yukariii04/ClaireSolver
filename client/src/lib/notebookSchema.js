@@ -7,6 +7,7 @@ export function createEmptyPage(pageNumberLabel = 'Page 1') {
     questionImageUrl: '',
     questionSummary: '',
     userStrokes: '[]',
+    studentLines: [],
     aiSteps: [],
   };
 }
@@ -36,6 +37,7 @@ export function normalizePage(pageId, value = {}) {
     questionImageUrl: page.questionImageUrl || '',
     questionSummary: page.questionSummary || '',
     userStrokes: typeof page.userStrokes === 'string' ? page.userStrokes : '[]',
+    studentLines: normalizeArray(page.studentLines),
     aiSteps: normalizeArray(page.aiSteps),
   };
 }

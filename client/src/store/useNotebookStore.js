@@ -460,6 +460,36 @@ export const useNotebookStore = create((set, get) => ({
     });
   },
 
+  savePageStudentLines: async (notebookId, pageId, lines) => {
+    const user = requireUser();
+    validatePageId(pageId);
+    const safeLines = Array.isArray(lines) ? lines : [];
+
+    if (database && isFirebaseConfigured) {
+      const updatedAt = serverTimestamp();
+      await update(ref(database), {
+        [`${notebookPath(user.uid, notebookId)}/pages/${pageId}/studentLines`]: safeLines,
+        [`${notebookPath(user.uid, notebookId)}/metadata/updatedAt`]: updatedAt,
+        [`${notebookIndexPath(user.uid, notebookId)}/updatedAt`]: updatedAt,
+      });
+    }
+
+    set((state) => {
+      if (state.activeNotebookId !== notebookId || !state.activeNotebook) return {};
+      const currentPage = state.activeNotebook.pages[pageId] || createEmptyPage(pageLabelFromId(pageId));
+      return {
+        activeNotebook: {
+          ...state.activeNotebook,
+          metadata: { ...state.activeNotebook.metadata, updatedAt: Date.now() },
+          pages: {
+            ...state.activeNotebook.pages,
+            [pageId]: { ...currentPage, studentLines: safeLines },
+          },
+        },
+      };
+    });
+  },
+
   appendAiStep: async (notebookId, pageId, step) => {
     const user = requireUser();
     validatePageId(pageId);

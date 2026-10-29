@@ -26,6 +26,12 @@ Three-service monorepo: **client** (React/Vite/Tailwind/Zustand), **server** (Ex
 - Step 8: Hands-free voice & System 1 gatekeeper pipeline (Gnani Prisma STT + Laya + Gnani Timbre TTS) — **complete**
 - Step 9: Homework-ready multi-page A4 PDF exporter (clean submission & revision guide modes) — **complete**
 - Step 10: Y2K retro-computing UI design system integration across student workspace — **complete**
+- Step 11: Real physical notebook baseline alignment & human handwriting ink system — **complete**
+  - Page Geometry: 32px cyan-blue horizontal rules (`#b9d5f0`), 72px left vertical red margin line (`rgba(244, 63, 94, 0.5)`).
+  - Student Writing: Interactive line editor (`StudentHandwritingLine.jsx`) allowing typing/writing directly on 32px ruled lines in natural handwriting ink (`Caveat` / `Kalam` font, midnight ink `#0F172A`) with inline KaTeX math compilation (`$...$`).
+  - AI Solution Steps: Stripped artificial card boxes/borders/gradients from `GhostPenStep.jsx`. Steps inscribe directly onto notebook lines in educator blue ink (`#1e40af`), step numbers `(1)` in the 72px margin column, math equations resting flush on 32px lines, and teacher annotations in red ink (`#e11d48`).
+  - Floating Dock: Added `✍️ Write (Ink)` tool alongside `✎ Draw`, `⌫ Eraser`, and `✨ Ask Marker`.
+  - PDF Export: Clean submission mode preserves human handwriting while stripping teacher coaching chips and buttons.
   - Design tokens: Classic chassis putty gray (`#D4D0C8`), cobalt titlebar gradient (`#000080` to `#1084D0`), CRT scanline overlay, desktop dither (`#008080`), 3D bevel outset/inset borders.
   - Fonts: `Bricolage Grotesque`, `Space Mono`, `Caveat`, `Kalam`.
   - Upgraded pages & dialogs:
